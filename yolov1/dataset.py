@@ -24,14 +24,14 @@ class VOCDataset(torch.utils.data.Dataset):
         boxes = []
         with open(label_path) as f:
             for label in f.readlines():
-                class_label, x, y, widht, height = [
+                class_label, x, y, width, height = [
                     float(x) if float(x) != int(float(x)) else int(x)
                     for x in label.replace("\n", "").split()
                 ]
                 
                 boxes.append([class_label, x, y, width, height])
                 
-        image_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
+        img_path = os.path.join(self.img_dir, self.annotations.iloc[index, 0])
         image = Image.open(img_path)
         boxes = torch.tensor(boxes)
         
