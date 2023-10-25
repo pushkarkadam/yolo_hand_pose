@@ -1,8 +1,468 @@
 import torch 
 import os 
 import pandas as pd 
-from PIL import Image 
+from PIL import Image
+import cv2
+import pickle
+import copy 
+import time 
+import sys 
+import os 
+import numpy as np 
+from tqdm import tqdm 
 
+
+class FreiHand:
+    """A class that extracts the annotation and stores them in YOLO format.
+    
+    Parameters
+    ----------
+    path: str
+        The root to the path where the data is stored.
+    file_type: str, default ``'training'``
+        The type of data used.
+        Options: ``'training'``, ``'evaluation'``
+    mask_dir: str
+        The directory where the mask images are stored.
+    
+    Attributes
+    ----------
+    K_array: list
+        A list of the intrinsic camera matrix.
+    verts_array: list
+        A list of verts.
+    xyz_array: list
+        A list of xyz coordinates of hand landmark.
+    uv: dict
+        A dictionary that maps the image name to the landmarks.
+    image_filenames: list
+        A list of all the image files.
+    EDGES: list
+        A list of landmark point graph connection.
+    images_shape: dict
+        A dictionary that maps image file names to the shape of the image.
+    yolo_annot: dict
+        A dictionary that maps the image file names to YOLO annotations.
+        YOLO format: [class x y w h]
+    yolo_pose: dict
+        A dictionary that maps the image file names to YOLO pose annotations.
+        YOLO pose format: [class x y w h px1 py1 ... px21 py21]
+        Pose consists of YOLO annotations along with 21 hand landmark.
+    bounding_box: dict
+        A dictionary that maps the image file names to bounding box coordinates.
+        format: [xmin, ymin, xmax, ymax]
+    annotation_df: None
+        This is used to store the ``pandas.DataFrame`` when the annotations are converted to dataframe.
+    hand_contours: dict
+        Use to store the contours of the hand from the mask images.
+        Image file names are mapped to the ``numpy.array`` of contour.
+        
+    Methods
+    -------
+    load_json_files()
+        Loads the json files.
+    convert_json_to_pickle()
+        Converts json to pickle files.
+    load_data_files()
+        Loads the pickle files
+    read_image_files(images_path='rgb')
+        Reads image files to store the image shapes.
+    project_landmarks()
+        Converts the pose coordinates from the datafiles to YOLO and YOLO pose formats.
+    save_images(save_path='.', image_location = 'rgb' , directory='Freihand_images', image_extension='.jpg')
+        Saves the images that has annotations to the given directory.
+    mask_contour(threshold=0, maxval=255, threshold_type=cv2.THRESH_BINARY, retrieval_mode=cv2.RETR_EXTERNAL, contour_approx_mode=cv2.CHAIN_APPROX_SIMPLE)
+        Reads the segmentation mask images.
+
+    Examples
+    --------
+    >>> from lfdtrack import *
+    >>> data_path = '~/path/to/data/FreiHand/'
+    >>> training = FreiHand(data_path, mask_dir='mask', file_type='training') # mask_dir='segmap' --> evaluation data
+    >>> training.load_data_files()
+    >>> training.read_image_files()
+    >>> training.mask_contour()
+    >>> training.project_landmarks()
+    >>> training.save_csv(file_name='annotations.csv')
+    >>> training.save(annotations=training.yolo_pose, directory='FreiHand_training_labels')
+    >>> training.save_images(directory='Friehand_training')
+    
+    """
+    
+    def __init__(self, path, mask_dir, file_type='training'):
+        self.path = path
+        
+        # Path where the segmentation masks are stored
+        self.mask_dir = mask_dir
+        
+        # Hand contour
+        self.hand_contours = dict()
+        
+        self.file_type = file_type
+        
+         # Camera calibration matrix
+        self.K_array = []
+        
+        # Vertices
+        self.verts_array = []
+        
+        # XYZ coordinates
+        self.xyz_array = []
+        
+        # Image coordinates
+        self.uv = dict()
+        
+        # Images list
+        self.image_filenames = []
+        
+        # annotations dataframe
+        annotation_df = None
+        
+        self.mask_filenames = []
+        
+        # graph
+        self.EDGES = [[0,1], [1,2], [2,3], [3,4], 
+                      [0,5], [5,6], [6,7], [7,8],
+                      [0,9], [9,10],[10,11], [11,12],
+                      [0,13],[13,14], [14,15], [15,16],
+                      [0,17],[17,18], [18,19], [19,20]]
+        
+        # image shapes
+        # shape format (H, W) --> numpy shape format for (row, col)
+        self.images_shape = dict()
+        
+        self.yolo_annot = dict()
+        self.yolo_pose = dict()
+        self.bounding_boxes = dict()
+        
+    def load_json_files(self):
+        """Loads the json file.
+        
+        Paramters
+        ---------
+        self.file_type: str, default ``'training'``
+            The type of files to pick up.
+            Available options: ``'training'``, ``'evaluation'``
+            
+        """
+        
+        start = time.time()
+        
+        with open(f'{self.path}/{self.file_type}_K.json') as K_fp:
+            print("Reading K...")
+            self.K_array = json.load(K_fp)
+            
+        with open(f'{self.path}/{self.file_type}_verts.json') as verts_fp:
+            print("Reading verts...")
+            self.verts_array = json.load(verts_fp)
+            
+        with open(f'{self.path}/{self.file_type}_xyz.json') as xyz_fp:
+            print("Reading xyz...")
+            self.xyz_array = json.load(xyz_fp)
+            
+        end = time.time()
+        
+        time_elapsed = end - start
+        
+        print(f"Time elapsed: {time_elapsed:.2f}s")
+        
+    def convert_json_to_pickle(self):
+        """Converts all the files to pickle."""
+        
+        files = []
+        
+        with os.scandir(self.path) as entries:
+            for entry in entries:
+                file, extension = os.path.splitext(entry.name)
+                if extension == '.json':
+                    files.append(file)
+                    
+        for file in files:
+            json_location = os.path.join(self.path, file + '.json')
+            pickle_location = os.path.join(self.path, file + '.pickle')
+            
+            with open(json_location) as f:
+                print(f'Reading {json_location}...')
+                json_file = json.load(f)
+                
+            with open(pickle_location, 'wb') as pf:
+                print(f'Saving {pickle_location}...')
+                pickle.dump(json_file, pf)
+                
+            del json_file
+            
+    def load_data_files(self):
+        """Loads the pickle data files.
+        
+        Paramters
+        ---------
+        self.file_type: str, default ``'training'``
+            The type of files to pick up.
+            Available options: ``'training'``, ``'evaluation'``
+        
+        """
+        
+        start = time.time()
+        
+        with open(f'{self.path}/{self.file_type}_K.pickle', 'rb') as K_fp:
+            print(f"Reading {self.file_type}_K...")
+            self.K_array = pickle.load(K_fp)
+            
+        with open(f'{self.path}/{self.file_type}_verts.pickle', 'rb') as verts_fp:
+            print("Reading verts...")
+            self.verts_array = pickle.load(verts_fp)
+
+        with open(f'{self.path}/{self.file_type}_xyz.pickle', 'rb') as xyz_fp:
+            print("Reading xyz...")
+            self.xyz_array = pickle.load(xyz_fp)
+            
+        end = time.time()
+        
+        time_elapsed = end - start
+        
+        print(f"Time elapsed: {time_elapsed:.2f}s")
+            
+    def read_image_files(self, images_path='rgb'):
+        """Reads and populates the images file list.
+        
+        Parameters
+        ----------
+        images_path: str, default ``'rgb'``
+            The directory where the images are stored.
+        
+        """
+        # Using the full path for the images
+        # root path + training/evalutate + 'rgb'
+        full_path = os.path.join(self.path, self.file_type, images_path)
+        
+        with os.scandir(full_path) as entries:
+            for entry in tqdm(entries):
+                file, extension = os.path.splitext(entry.name)
+                self.image_filenames.append(file)
+                
+                image = cv2.imread(os.path.join(full_path, entry))
+                
+                # adding the shape
+                self.images_shape[file] = image.shape
+                
+                # deleting the image to free memory
+                del image
+                
+        # sorting the list
+        self.image_filenames.sort()
+        
+        # sorting the image shape dictionary
+        self.images_shape = dict(sorted(self.images_shape.items()))
+        
+    def mask_contour(self, 
+                     threshold=0, 
+                     maxval=255, 
+                     threshold_type=cv2.THRESH_BINARY,
+                     retrieval_mode=cv2.RETR_EXTERNAL,
+                     contour_approx_mode=cv2.CHAIN_APPROX_SIMPLE
+                    ):
+        """Reads the segmentation mask images.
+        
+        Parameters
+        ----------
+        threshold: int, default ``0``
+            The threshold value for the thresholding operation.
+        maxval: int, default `255``
+            The maximum value to keep during thresholding.
+        threshold_type: int, default ``cv2.THRESH_BINARY``
+            The type of thresholding operation.
+            The default value is the enum in opencv that corresponds to ``0``.
+        retrieval_mode: int, default ``cv2.RETR_EXTERNAL``
+            The type of contouring operation.
+            Since we are interested in getting the outer boundary of the hand,
+            we choose external contour.
+        contour_approx_mode: int, default ``cv2.CHAIN_APPROX_SIMPLE``
+            The contour approximation mode.
+            Enum in opencv.
+            
+        """
+        # Using the full path for the images
+        # root path + training/evalutate + 'mask'
+        full_path = os.path.join(self.path, self.file_type, self.mask_dir)
+        
+        with os.scandir(full_path) as entries:
+            for entry in tqdm(entries):
+                file, extension = os.path.splitext(entry.name)
+                # Reading grayscale image for segmentation mask
+                mask = cv2.imread(os.path.join(full_path, entry), 0)
+                _, thresh_image = cv2.threshold(mask, threshold, maxval, threshold_type)
+                
+                # Find contours
+                contours, _ = cv2.findContours(thresh_image, retrieval_mode, contour_approx_mode)
+                
+                self.hand_contours[file] = contours[0][:,0]
+                
+                self.mask_filenames.append(file)
+        
+    def project_landmarks(self):
+        """Projects the landmarks"""
+        
+        for K, xyz, file in zip(tqdm(self.K_array), self.xyz_array, self.image_filenames):
+            xyz_i = np.array(xyz)
+            K_i = np.array(K)
+            
+            # Matrix multiplication for the camera intrinsic matrix and the homogenous coordinates
+            uv_i = np.matmul(K_i, xyz_i.T).T
+            
+            # converting the homogenous coordinates
+            landmarks = (uv_i[:, :2] / uv_i[:,-1:]).astype(np.int32)
+            
+            # number of landmarks
+            n_landmarks, _ = uv_i.shape
+            
+            self.uv[file] = landmarks
+            
+            # get image shapes
+            H, W, _ = self.images_shape[file]
+            
+            pose = []
+            
+            # Getting the contour detected for the hand using mask
+            contour = self.hand_contours[file]
+            
+            # bounding box
+            x = contour[:,0]
+            y = contour[:,1]
+            
+            # min values
+            xmin = np.min(x)
+            ymin = np.min(y)
+            
+            # max values
+            xmax = np.max(x)
+            ymax = np.max(y)
+            
+            box_height = ymax - ymin
+            box_width = xmax - xmin
+            
+            yolo_coord = [0, 
+                          (xmin + box_width/2) / W, 
+                          (ymin + box_height/2) / H, 
+                          box_width / W,
+                          box_height / H
+                         ]
+            
+            x_ = np.array(landmarks[:, 0] / W).reshape((n_landmarks, 1))
+            y_ = np.array(landmarks[:, 1] / H).reshape((n_landmarks, 1))
+            
+            pose_xy = np.concatenate((x_, y_), axis=1)
+            
+            for n in pose_xy:
+                pose.append(n[0])
+                pose.append(n[1])
+            
+            pose_coord = yolo_coord + pose
+            
+            self.yolo_annot[file] = yolo_coord
+            self.yolo_pose[file] = pose_coord
+                
+            # Bounding boxes | format: [xmin, ymin, xmax, ymax]
+            self.bounding_boxes[file] = [xmin, ymin, xmax, ymax]                
+            
+    def save_images(self, save_path='.', image_location = 'rgb' , directory='Freihand_images', image_extension='.jpg'):
+        """Reads and writes the images.
+        
+        Parameters
+        ----------
+        save_path: str, default ``'.'``
+            Save location of the images.
+        image_location: str, default ``'rgb'``
+            Location where to look for the images in the ``'training'`` or ``'evaluation'`` directory.
+        directory: str, default ``'Freihand_images'``
+            Directory to store the images.
+        image_extension: str, default ``'.jpg'``
+            Extension of the images.
+            
+        """
+        
+        image_dir_path = os.path.join(save_path, directory)
+        
+        if not os.path.exists(image_dir_path):
+            os.makedirs(image_dir_path)
+            print(f"New directory {directory} created at {image_dir_path}")
+        
+        files = list(self.yolo_pose.keys())
+        
+        for fn in tqdm(files):
+            image_path = os.path.join(self.path, self.file_type, image_location, fn + image_extension)
+            image_save_path = os.path.join(image_dir_path, fn + image_extension)
+            
+            try:
+                image = cv2.imread(image_path)
+                cv2.imwrite(image_save_path, image)
+                del image
+            except Exception as e:
+                print(e)
+                continue
+                
+    def save_csv(self, save_path='.', file_name="annotations.csv", image_extension='.jpg', save_index=False, annot_col=["image_name","class","x","y","w","h","px1","py1","px2","py2","px3","py3","px4","py4","px5","py5","px6","py6","px7","py7","px8","py8","px9","py9","px10","py10","px11","py11","px12","py12","px13","py13","px14","py14","px15","py15","px16","py16","px17","py17","px18","py18","px19","py19","px20","py20","px21","py21"]):
+        """Saves annotation to csv file.
+        
+        Parameters
+        ----------
+        save_path: str, default ``'.'``
+            Path where the file is to be saved.
+        file_name: str, default ``"annotations.csv"``
+            Name of the file.
+        image_extension: str, default ``'.jpg'``
+            Extension of the image to add to the csv ``image_name`` column.
+        save_index: bool, default ``False``
+            If ``False`` then it does not add an index column to csv file while saving.
+        annot_col: list, default ``["image_name","class","x","y","w","h","px1","py1","px2","py2","px3","py3","px4","py4","px5","py5","px6","py6","px7","py7","px8","py8","px9","py9","px10","py10","px11","py11","px12","py12","px13","py13","px14","py14","px15","py15","px16","py16","px17","py17","px18","py18","px19","py19","px20","py20","px21","py21"]``
+            Column names for the annotation.
+            
+        """
+        # combine path names
+        save_file_path = os.path.join(save_path, file_name) 
+        
+        d = []
+        
+        for k, v in self.yolo_pose.items():
+            image_name = k + image_extension
+            row = [image_name] + v
+            d.append(row)
+            
+        df = pd.DataFrame(d, columns=annot_col)
+        
+        annotation_df = copy.deepcopy(df)
+        
+        df.to_csv(save_file_path, index=save_index)
+                   
+    def save_annotations(self, save_path='.', directory='combined_labels', label_extension='.txt'):
+        """Saves the annotations.
+        
+        Parameters
+        ----------
+        save_path: str, default ``'.'``
+            The path where the result directory and files are to be saved.
+        directory: str, default ``'labels'``
+            The directory name under which the labels text files are to be saved.
+            
+        """
+        # Labels path to read the labels from
+        labels_path = os.path.join(save_path, directory)
+        
+        # Creating a directory if it does not exist
+        if not os.path.exists(labels_path):
+            os.makedirs(labels_path)
+            print(f"New directory {directory} created at {labels_path}")
+            
+        if self.yolo_annot:
+            for k, v in self.yolo_annot.items():
+                label_file = os.path.join(labels_path, k + label_extension)
+
+                yolo_annotation = self.yolo_pose[k]
+
+                with open(label_file, 'w') as file:
+                    for label in yolo_annotation:
+                        file.write('%s' % label)
+                        file.write(' ')
+                    file.write('\n')
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(
