@@ -4,6 +4,153 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from collections import Counter
 
+
+def show_landmarks(image, bounding_box, landmarks):
+    """Shows landmarks on the image.
+    
+    Parameters
+    ----------
+    image: numpy.ndarray
+        A numpy image.
+    bounding_box: list
+        A list of bounding box coordinates.
+    landmarks: list
+        A list of landmark coordinates.
+    """
+    frame = copy.deepcopy(image)
+    
+    EDGES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]]
+    
+    H, W, _ = frame.shape
+    x,y,w,h = np.int32(np.array(bounding_box) * np.array([W, H, W, H]))
+    
+    landmarks = landmarks * H
+    
+    xmin = x - w/2
+    ymin = y - h/2
+    xmax = x + w/2
+    ymax = y + h/2
+
+    # Landmarks
+    uv = [(np.int32(i[0]), np.int32(i[1])) for i in landmarks]
+    
+    for e in EDGES:
+        frame = cv2.line(frame, uv[e[0]], uv[e[1]], (255, 255, 255), 2)
+    
+    for n, landmark in enumerate(uv):
+        frame = cv2.circle(frame, landmark, 2, (255, 0, 0), -1)
+        frame = cv2.putText(frame, 
+                            text=str(n), 
+                            org=landmark, 
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=0.2,
+                            color=(0, 0, 0),
+                            thickness=1
+                           )
+        
+    # Bounding box
+    start_point = (np.int32(xmin), np.int32(ymin))
+    end_point = (np.int32(xmax), np.int32(ymax))
+    frame = cv2.rectangle(frame, start_point, end_point, (255, 0, 0),2)
+    
+    # Bounding box center
+    frame = cv2.circle(frame, (x, y), 2, (0, 255, 255), -1)
+        
+    return frame
+
+def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4):
+    """Generates rendered images with bounding box.
+    
+    Parameters
+    ----------
+    labels: pandas.DataFrame
+        A pandas datafile with annotation labels.
+    data_path: str
+        The path where the images are stored.
+    file_type: str
+        The file type example: ``training`` or ``evaluation``.
+    seed: int, default ``0``
+        The seed for random generator.
+    sample_size: int, default ``4``
+        The number of sample images to generate
+
+    Returns
+    -------
+    rendered_images: dict
+        A dict that maps the sample number to rendered image.
+    names: dict
+        A dict that maps the sample number to image name.
+
+    """
+    np.random.seed(seed)
+    
+    samples = []
+    
+    rendered_images = dict()
+    names = dict()
+    
+    for s in range(sample_size):
+        rendered_images[s] = []
+        names[s] = []
+    
+        idx = list(np.random.randint(0,labels.shape[0], size=9))
+
+        for i in idx:
+            image_name = labels.iloc[i, 0]
+            names[s].append(image_name)
+
+            image_class = labels.iloc[i, 1]
+            bounding_box = labels.iloc[i, 2:6]
+            bounding_box = np.asarray(bounding_box, dtype=float)
+            landmarks = labels.iloc[i,6:]
+            landmarks = np.asarray(landmarks, dtype=float).reshape(-1,2)
+
+            image = cv2.imread(os.path.join(data_path, file_type, image_dir, image_name))
+
+            H, W, _ = image.shape
+
+            frame = show_landmarks(image, bounding_box, landmarks)
+
+            rendered_images[s].append(frame)
+    
+    return rendered_images, names
+
+def plot_rendered_grid(rendered_images, names, dir_name='check', path='.'):
+    """Creates a directory with the grid plots.
+    
+    Parameters
+    ----------
+    rendered_images: dict
+        A dictionary that maps the sample size number to rendered image.
+    names: dict
+        A dictionary that maps the sample size number to image name.
+    dir_name: str, default ``'check'``
+        The name of the directory where the images will be saved.
+    path: str, default ``'.'``
+        The path where the directory for image will be created.
+
+    """
+    dir_path = os.path.join(path, dir_name)
+    
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        print(f"New directory {dir_name} created at {path}")
+    
+    for s in list(rendered_images.keys()):
+        r_images = rendered_images[s]
+        r_names = names[s]
+        fig = plt.figure(figsize=(10, 10))
+        for i in range(len(r_images)):
+            ax = fig.add_subplot(3,3,i+1)
+            plt.imshow(r_images[i])
+            plt.title(r_names[i])
+            plt.axis('off')
+                
+        
+        file_name = f"{dir_name}_{s}.jpg"
+        file_path = os.path.join(dir_path, file_name)
+        fig.savefig(file_path)
+
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     """
     Calculates intersection over union
