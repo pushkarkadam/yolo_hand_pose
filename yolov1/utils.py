@@ -5,7 +5,19 @@ import matplotlib.patches as patches
 from collections import Counter
 
 
-def show_landmarks(image, bounding_box, landmarks):
+def show_landmarks(image, 
+                   bounding_box, 
+                   landmarks, 
+                   image_class,
+                   font=cv2.FONT_HERSHEY_SIMPLEX,
+                   font_thickness=1,
+                   box_color=(255, 0, 0),
+                   box_thickness=2,
+                   font_scale=0.2,
+                   font_color=(0, 0, 0),
+                   label_font_color=(255, 255, 255),
+                   label_font_scale=0.5,
+                   label_font_thickness=2):
     """Shows landmarks on the image.
     
     Parameters
@@ -17,7 +29,15 @@ def show_landmarks(image, bounding_box, landmarks):
     landmarks: list
         A list of landmark coordinates.
     """
+    
     frame = copy.deepcopy(image)
+
+    if image_class == 0:
+        image_label = 'right_hand'
+        box_color = (255, 0, 0)
+    else:
+        image_label = 'left_hand'
+        box_color = (255, 192, 203)
     
     EDGES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]]
     
@@ -51,10 +71,24 @@ def show_landmarks(image, bounding_box, landmarks):
     # Bounding box
     start_point = (np.int32(xmin), np.int32(ymin))
     end_point = (np.int32(xmax), np.int32(ymax))
-    frame = cv2.rectangle(frame, start_point, end_point, (255, 0, 0),2)
+    frame = cv2.rectangle(frame, start_point, end_point, box_color, 2)
     
     # Bounding box center
     frame = cv2.circle(frame, (x, y), 2, (0, 255, 255), -1)
+    
+    text = str(f"{image_label}")
+    text_size, _ = cv2.getTextSize(text, font, label_font_scale, font_thickness)
+    text_w, text_h = text_size
+    text_end_point = (start_point[0] + text_w, start_point[1] + text_h)
+    frame = cv2.rectangle(frame, start_point, text_end_point , box_color, -1)
+    frame = cv2.putText(frame,
+                        text=text,
+                        org=(start_point[0], start_point[1]+int(text_h)),
+                        fontFace=font,
+                        fontScale=label_font_scale,
+                        color=label_font_color,
+                        thickness=label_font_thickness
+                                   )
         
     return frame
 
