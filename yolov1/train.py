@@ -4,10 +4,10 @@ import torch.optim as optim
 import torchvision.transforms.functional as FT 
 from tqdm import tqdm 
 from torch.utils.data import DataLoader
-from model import *
-from dataset import *
-from utils import *
-from loss import *
+from .model import *
+from .dataset import *
+from .utils import *
+from .loss import *
 
 seed = 123 
 torch.manual_seed(seed)

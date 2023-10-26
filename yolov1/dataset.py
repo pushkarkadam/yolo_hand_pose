@@ -73,6 +73,9 @@ class FreiHand:
         Saves the images that has annotations to the given directory.
     mask_contour(threshold=0, maxval=255, threshold_type=cv2.THRESH_BINARY, retrieval_mode=cv2.RETR_EXTERNAL, contour_approx_mode=cv2.CHAIN_APPROX_SIMPLE)
         Reads the segmentation mask images.
+    generate_annotations(save_csv=False, save_path='.', file_name="annotations.csv", image_extension='.jpg', save_index=False, annot_col=["image_name","class","x","y","w","h","px1","py1","px2","py2","px3","py3","px4","py4","px5","py5","px6","py6","px7","py7","px8","py8","px9","py9","px10","py10","px11","py11","px12","py12","px13","py13","px14","py14","px15","py15","px16","py16","px17","py17","px18","py18","px19","py19","px20","py20","px21","py21"])
+        Generates the annotations and saves them in a pandas.DataFrame object called ``annotations_df``.
+        If the boolean ``save_csv=True`` then the csv file is saved.
 
     Examples
     --------
@@ -83,7 +86,7 @@ class FreiHand:
     >>> training.read_image_files()
     >>> training.mask_contour()
     >>> training.project_landmarks()
-    >>> training.save_csv(file_name='annotations.csv')
+    >>> training.generate_annotations(file_name='annotations.csv')
     >>> training.save(annotations=training.yolo_pose, directory='FreiHand_training_labels')
     >>> training.save_images(directory='Friehand_training')
     
@@ -116,7 +119,7 @@ class FreiHand:
         self.image_filenames = []
         
         # annotations dataframe
-        annotation_df = None
+        self.annotation_df = None
         
         self.mask_filenames = []
         
@@ -400,11 +403,13 @@ class FreiHand:
                 print(e)
                 continue
                 
-    def save_csv(self, save_path='.', file_name="annotations.csv", image_extension='.jpg', save_index=False, annot_col=["image_name","class","x","y","w","h","px1","py1","px2","py2","px3","py3","px4","py4","px5","py5","px6","py6","px7","py7","px8","py8","px9","py9","px10","py10","px11","py11","px12","py12","px13","py13","px14","py14","px15","py15","px16","py16","px17","py17","px18","py18","px19","py19","px20","py20","px21","py21"]):
+    def generate_annotations(self, save_csv=False, save_path='.', file_name="annotations.csv", image_extension='.jpg', save_index=False, annot_col=["image_name","class","x","y","w","h","px1","py1","px2","py2","px3","py3","px4","py4","px5","py5","px6","py6","px7","py7","px8","py8","px9","py9","px10","py10","px11","py11","px12","py12","px13","py13","px14","py14","px15","py15","px16","py16","px17","py17","px18","py18","px19","py19","px20","py20","px21","py21"]):
         """Saves annotation to csv file.
         
         Parameters
         ----------
+        save_csv: bool, default ``False``
+            A boolean to save the annotations.
         save_path: str, default ``'.'``
             Path where the file is to be saved.
         file_name: str, default ``"annotations.csv"``
@@ -429,9 +434,10 @@ class FreiHand:
             
         df = pd.DataFrame(d, columns=annot_col)
         
-        annotation_df = copy.deepcopy(df)
-        
-        df.to_csv(save_file_path, index=save_index)
+        self.annotation_df = copy.deepcopy(df)
+
+        if save_csv:
+            df.to_csv(save_file_path, index=save_index)
                    
     def save_annotations(self, save_path='.', directory='combined_labels', label_extension='.txt'):
         """Saves the annotations.
@@ -463,6 +469,106 @@ class FreiHand:
                         file.write('%s' % label)
                         file.write(' ')
                     file.write('\n')
+
+def mirror_annotations(labels, escape_cols=2, u=1, v=0):
+    """Mirrors the coordinates along y axis and translates them.
+    
+    Parameters
+    ----------
+    labels: pandas.DataFrame
+        A dataframe of right hand annotations.
+    escape_cols: int, default ``2``
+        The number of columns to skip which could contain data like ``image_name`` and ``class``.
+    u: int, default ``1``
+        Translation of x coordinates.
+        For normalised coordinates, it is ``1`` otherwise the size of the image.
+    v: int, default ``1``
+        Translation of y coordinates.
+        Since reflecting along y axis and translating along x axis, the value of ``v`` is ``1``.
+    
+    Returns
+    -------
+    df_combined: pandas.DataFrame
+        A combined dataframe of the annotations of both left and right hands.
+        
+    """
+    # Extracting the coordinates from labels pandas.DataFrame and transposing the matrix
+    M = np.array(labels.iloc[:, escape_cols:]).T
+
+    # n -> number of features
+    # m -> number of datapoints
+    n, m = M.shape
+    
+    # Identify matrix
+    I = np.eye(n+1)
+    
+    # vector of ones
+    h = np.ones((1, m))
+
+    # vertical stacking the vector for homogenous coordinates
+    Mh = np.vstack([M, h])
+    
+    # creating vector k to multiply with identity matrix where x coordinates
+    # become negative and y remains positive
+    k1 = np.array([-1, 1, 1, 1])
+    k2 = np.array([-1, 1] * 21)
+    k3 = np.array([1])
+    
+    # horizontal stacking the vectors and reshaping them
+    k = np.hstack([k1, k2, k3]).reshape(n+1,1)
+    
+    # Element-wise multiplication
+    T = np.multiply(I, k)
+    
+    # column vector for translation of the coordinates
+    c1 = np.array([u,v, 0, 0])
+    c2 = np.array([u,v] * 21)
+    c3 = np.array([1])
+    
+    # horizontal stacking the vectors created.
+    c = np.hstack([c1, c2, c3]).reshape((n+1))
+    
+    # Changing the last column of the transformation matrix.
+    T[:,-1] = c
+    
+    # Multiplying the transformation matrix T and Mh 
+    Gh = np.dot(T, Mh)
+    
+    # Removing the last row of ones and transforming
+    G = Gh[:-1,:].T
+    
+    # extracting the list of images
+    image_list = list(labels.iloc[:,0])
+    
+    # Getting the extension of the images
+    image_extension = image_list[0].rsplit('.', 1)[-1]
+    
+    # Separating the image name from its extension
+    image_names = [image_name.rsplit('.', 1)[0] for image_name in image_list]
+    
+    # adding a subscript ``_l`` to the mirrored images indicating they are left hand now
+    mirror_image_names = np.array([f"{i}_l.{image_extension}" for i in image_names]).reshape((m,1))
+    
+    # Creating a vector of labels for the left hand (right hand --> 0, left hand --> 1)
+    image_class = np.ones((m,1))
+    
+    # stacking all the columns together to create an array of dataset entry
+    df_m = np.hstack([mirror_image_names, image_class, G])
+    
+    # Column headings of the dataset
+    columns = list(labels.columns)
+    
+    # Collecting the data from the input pandas.DataFrame
+    labels_m = np.array(labels.iloc[:,:])
+    
+    # Vertically stacking the two datasets
+    combined_data_m = np.vstack([labels_m, df_m]) 
+    
+    # Converting the newly created dataset into one pandas.DataFrame
+    df_combined = pd.DataFrame(combined_data_m, columns=columns, index=None)
+    
+    return df_combined
+
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(

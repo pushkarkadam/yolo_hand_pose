@@ -2,6 +2,10 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import cv2
+import os
+import sys
+import copy
 from collections import Counter
 
 
@@ -143,7 +147,7 @@ def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4
 
             H, W, _ = image.shape
 
-            frame = show_landmarks(image, bounding_box, landmarks)
+            frame = show_landmarks(image, bounding_box, landmarks, image_class)
 
             rendered_images[s].append(frame)
     
