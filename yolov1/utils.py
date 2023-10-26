@@ -166,6 +166,8 @@ def plot_rendered_grid(rendered_images, names, dir_name='check', path='.', save_
         The name of the directory where the images will be saved.
     path: str, default ``'.'``
         The path where the directory for image will be created.
+    save_images: bool, default ``False``
+        Saves the images in the directory ``dir_name``.
 
     """
     dir_path = os.path.join(path, dir_name)
