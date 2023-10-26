@@ -96,7 +96,7 @@ def show_landmarks(image,
         
     return frame
 
-def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4):
+def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4, sample_image_number=9):
     """Generates rendered images with bounding box.
     
     Parameters
@@ -131,7 +131,7 @@ def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4
         rendered_images[s] = []
         names[s] = []
     
-        idx = list(np.random.randint(0,labels.shape[0], size=9))
+        idx = list(np.random.randint(0,labels.shape[0], size=sample_image_number))
 
         for i in idx:
             image_name = labels.iloc[i, 0]
