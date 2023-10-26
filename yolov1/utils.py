@@ -153,7 +153,7 @@ def render_sample(labels, data_path, file_type, image_dir, seed=0, sample_size=4
     
     return rendered_images, names
 
-def plot_rendered_grid(rendered_images, names, dir_name='check', path='.'):
+def plot_rendered_grid(rendered_images, names, dir_name='check', path='.', save_images=False):
     """Creates a directory with the grid plots.
     
     Parameters
@@ -184,10 +184,10 @@ def plot_rendered_grid(rendered_images, names, dir_name='check', path='.'):
             plt.title(r_names[i])
             plt.axis('off')
                 
-        
-        file_name = f"{dir_name}_{s}.jpg"
-        file_path = os.path.join(dir_path, file_name)
-        fig.savefig(file_path)
+        if save_images:
+            file_name = f"{dir_name}_{s}.jpg"
+            file_path = os.path.join(dir_path, file_name)
+            fig.savefig(file_path)
 
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     """
