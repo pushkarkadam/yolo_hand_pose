@@ -10,6 +10,9 @@ import sys
 import os 
 import numpy as np 
 from tqdm import tqdm 
+from torchvision.io import read_image 
+import torch.nn.functional as F 
+import torchvision.transforms as transforms 
 
 
 class FreiHand:
@@ -569,6 +572,31 @@ def mirror_annotations(labels, escape_cols=2, u=1, v=0):
     
     return df_combined
 
+class HandPoseDataset(Dataset):
+    def __init__(self, annotations_file, image_dir, transform=None, target_transform=None):
+        self.image_labels = pd.read_csv(annotations_file)
+        self.image_dir = image_dir 
+        self.transform = transform 
+        self.target_transform = target_transform 
+
+    def __len__(self):
+        return len(self.image_labels)
+
+    def __getitem__(self, idx):
+        image_path = os.path.join(self.image_dir, self.image_labels.iloc[idx, 0])
+        # Reading grayscale image
+        # TODO: change to color image in next development
+        image = cv2.imread(image_path, 0)
+        
+        # Vector of labels
+        label = self.image_labels.iloc[idx, 1]
+
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        
+        return (image / 255).astype(np.float32), label.astype(np.int_)
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(
