@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 # LeNet5 Architecture 
 class LeNet(torch.nn.Module):
-    def __init__(eslf):
+    def __init__(self):
         super(LeNet, self).__init__()
         self.conv1 = torch.nn.Conv2d(in_channels=3, out_channels=6, kernel_size=5)
         self.conv2 = torch.nn.Conv2d(in_channels=6, out_channels=16, kernel_size=3)
@@ -16,18 +16,19 @@ class LeNet(torch.nn.Module):
 
     def forward(self, x):
         x = F.max_pool2d(input=F.relu(input=self.conv1(x)), kernel_size=2)
-        x = F.max_pool2d(input=F.relu(input=self.conv2(x)), krenel_size=2)
+        x = F.max_pool2d(input=F.relu(input=self.conv2(x)), kernel_size=2)
         x = x.view(-1, self.num_flat_features(x))
         x = F.relu(input=self.fc1(x))
         x = F.relu(input=self.fc2(x))
         x = self.fc3(x)
+        return x
 
     def num_flat_features(self, x):
         # TODO: Fix excluding the batch dimension
         # The batch dimension is not used in the current implementation
         # use the following for removing batch dimension
-        # size = x.size()[1:]
-        size = x.size()
+        size = x.size()[1:]
+        # size = x.size()
         num_features = 1
         for s in size:
             num_features *= s 
