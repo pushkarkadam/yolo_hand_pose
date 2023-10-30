@@ -10,6 +10,10 @@ import sys
 import os 
 import numpy as np 
 from tqdm import tqdm 
+from torchvision.io import read_image 
+import torch.nn.functional as F 
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
 
 
 class FreiHand:
@@ -569,6 +573,37 @@ def mirror_annotations(labels, escape_cols=2, u=1, v=0):
     
     return df_combined
 
+class HandPoseDataset(Dataset):
+    def __init__(self, annotations_file, image_dir, transform=None, target_transform=None):
+        self.image_labels = pd.read_csv(annotations_file)
+        self.image_dir = image_dir
+        self.transform = transform
+        self.target_transform = target_transform
+        
+    def __len__(self):
+        return len(self.image_labels)
+    
+    def __getitem__(self, idx):
+        image_path = os.path.join(self.image_dir, self.image_labels.iloc[idx, 0])
+        # Transposing the image to store it in pytorch tensor format [channel, row, col]
+        image = cv2.imread(image_path)
+        
+        # Creating a normalised transform object
+        normalize_transform = transforms.ToTensor()
+        
+        # Normalizing the image
+        normalized_image = normalize_transform(image)
+        
+        # Extracting the label column from dataframe
+        labels = self.image_labels.iloc[idx, 1]
+        
+        # Applying for transforms if any
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+
+        return normalized_image, labels.astype(np.int_)
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(
