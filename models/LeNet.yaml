@@ -1,0 +1,13 @@
+nc: 2 # number of class
+
+architecture:
+  [
+    #[from, number, module, args: [in_channel, out_channel, kernel_size, stride, padding]
+    [-1, 1, Conv, [3, 6, 5, 1, 0]],
+    [-1, 1, MaxPool, [2, 2, 0]], # [kernel_size, stride, padding]
+    [-1, 1, Conv, [6, 16, 3, 1, 0]],
+    [-1, 1, MaxPool, [2, 2, 0]],
+    [-1, 1, Fc, [120], ReLU], # [from, number, module, units, activation]
+    [-1, 1, Fc, [84], ReLU],
+    [-1, 1, Fc, [2], None]
+  ]
