@@ -1,5 +1,7 @@
 import sys
+import os
 import yaml
+import time
 sys.path.append('..')
 from yolov1 import * 
 
@@ -9,6 +11,24 @@ train_annotations = '../data/dev/train.csv'
 train_images = '../data/dev/train'
 test_annotations = '../data/dev/test.csv'
 test_images = '../data/dev/test'
+train_loc = '../data/runs'
+train_dir = 'train'
+
+# Creating runs/train<timestamp> directory
+timestamp = str(int(time.time()))
+train_dir = train_dir + '_' + timestamp
+train_path = os.path.join(train_loc, train_dir)
+
+# Last model path to save model after every epoch
+last_model_path = os.path.join(train_path, "last.pth")
+
+# final model that is saved after the training is complete
+best_model_path = os.path.join(train_path, "best.pth")
+
+if not os.path.exists(train_path):
+    os.makedirs(train_path)
+    print(f"New directory {train_dir} created at {train_path}")
+
 epochs = 5
 
 # Loading datasets
@@ -51,9 +71,15 @@ print(model)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
-
+# Training
 for t in range(epochs):
     print(f"Epoch{t+1}\n------------------------------------")
     train(train_dataloader, model, loss_fn, optimizer, device)
     test(test_dataloader, model, loss_fn, device)
+    torch.save(model.state_dict(), os.path.join(train_path, "last.pth"))
 print("Done!")
+
+# Saving the final model
+torch.save(model.state_dict(), best_model_path)
+print(f"Saved Pytorch Model State to {best_model_path}")
+
