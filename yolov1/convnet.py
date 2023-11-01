@@ -1,5 +1,6 @@
 import torch 
 from .modules import * 
+from .utils import *
 
 
 class ConvNet(torch.nn.Module):
