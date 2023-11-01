@@ -191,6 +191,53 @@ def plot_rendered_grid(rendered_images, names, dir_name='check', path='.', save_
             file_path = os.path.join(dir_path, file_name)
             fig.savefig(file_path)
 
+def conv_array_dim(input_size, kernel_size, stride=1, padding=0):
+    """Returns the dimension of the array after convolution operation.
+    
+    Parameters
+    ----------
+    input_size: int
+        The size of the input array.
+    kernel_size: int
+        The size of the kernel.
+    stride: int, default ``1``
+        The stride over the convolution operation.
+    padding: int, default ``0``
+        The padding added to the array.
+
+    Returns
+    -------
+    int
+        The dimension fo the output array.
+
+    """
+    return int(np.floor((input_size - kernel_size + 2 * padding)/stride) + 1)
+
+def maxpool_dim(input_size, kernel_size, stride=1, padding=0):
+    """Returns the dimension of the output array after maxpooling function.
+    
+    Parameters
+    ----------
+    input_size: int
+        The size of the input array.
+    kernel_size: int
+        The size of the kernel.
+    stride: int, default ``1``
+        The stride over the convolution operation.
+    padding: int, default ``0``
+        The padding added to the array.
+
+    Returns
+    -------
+    int
+        The dimension fo the output array.
+    
+    """
+
+    return int(np.floor(input_size/kernel_size))
+
+
+
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     """
     Calculates intersection over union
