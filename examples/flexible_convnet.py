@@ -73,9 +73,15 @@ optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
 # Training
 for t in range(epochs):
+    dt = time.time()
     print(f"Epoch{t+1}\n------------------------------------")
     train(train_dataloader, model, loss_fn, optimizer, device)
     test(test_dataloader, model, loss_fn, device)
+    time_elapsed = time.time() - dt 
+    if time_elapsed < 100:
+        print(f"Time Elapsed: {time_elapsed:>5f}s")
+    else:
+        print(f"Time Elapsed: {time_elapsed/3600:>5f}h")
     torch.save(model.state_dict(), os.path.join(train_path, "last.pth"))
 print("Done!")
 
