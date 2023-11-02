@@ -237,7 +237,7 @@ def maxpool_dim(input_size, kernel_size, stride=1, padding=0):
 
     return int(np.floor(input_size/kernel_size))
 
-def load_model(model_path):
+def load_architecture(model_path):
     """Loads model architecture from the yaml file.
     
     Parameters
