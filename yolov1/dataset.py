@@ -575,6 +575,19 @@ def mirror_annotations(labels, escape_cols=2, u=1, v=0):
 
 class HandPoseDataset(Dataset):
     def __init__(self, annotations_file, image_dir, transform=None, target_transform=None):
+        """Reads Freihand dataset stored in the YOLO format.
+        
+        Parameters
+        ----------
+        annotations_file: str
+            Path to the annotation csv file.
+        image_dir: str
+            Path to the image directory
+        transform: torchvision.transforms, default ``None``
+            A transform object to tranform the image.
+        target_transform: default ``None``
+            A transformation to the labels.
+        """
         self.image_labels = pd.read_csv(annotations_file)
         self.image_dir = image_dir
         self.transform = transform
@@ -596,14 +609,16 @@ class HandPoseDataset(Dataset):
         
         # Extracting the label column from dataframe
         labels = self.image_labels.iloc[idx, 1]
+
+        labels = labels.astype(np.int_)
         
         # Applying for transforms if any
         if self.transform:
-            image = self.transform(image)
+            normalized_image = self.transform(normalized_image)
         if self.target_transform:
-            label = self.target_transform(label)
+            labels = self.target_transform(labels)
 
-        return normalized_image, labels.astype(np.int_)
+        return normalized_image, labels
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(
