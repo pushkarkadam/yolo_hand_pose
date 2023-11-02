@@ -7,6 +7,7 @@ import os
 import sys
 import copy
 from collections import Counter
+import yaml
 
 
 def show_landmarks(image, 
@@ -236,6 +237,36 @@ def maxpool_dim(input_size, kernel_size, stride=1, padding=0):
 
     return int(np.floor(input_size/kernel_size))
 
+def load_architecture(model_file_path):
+    """Loads model architecture from the yaml file.
+    
+    Parameters
+    ----------
+    model_path: str
+        The path where the model architecture is stored in a YAML file.
+        Example: ``'../models/LeNet.yaml'``
+        The YAML file must have ``architecture`` as a key.
+        Example:
+        ```
+        architecture:
+            [
+                #[from, number, module, args: [in_channel, out_channel, kernel_size, stride, padding]
+                [-1, 1, Conv, [3, 6, 5, 1, 0]],
+                [-1, 1, MaxPool, [2, 2, 0]], # [kernel_size, stride, padding]
+                [-1, 1, Conv, [6, 16, 3, 1, 0]],
+                [-1, 1, MaxPool, [2, 2, 0]],
+                [-1, 1, Fc, [120], ReLU], # [from, number, module, units, activation]
+                [-1, 1, Fc, [84], ReLU],
+                [-1, 1, Fc, [2], None]
+            ]
+        ```
+
+    """
+    # Loading YAML file
+    with open(model_file_path, 'r') as f:
+        model = yaml.safe_load(f)
+
+    return model['architecture']
 
 
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):

@@ -1,0 +1,17 @@
+file_paths:
+    model_file: ../models/LeNet.yaml
+    train_annotations: ../data/dev/train.csv
+    train_images: ../data/dev/train
+    test_annotations: ../data/dev/test.csv
+    test_images: ../data/dev/test
+    train_loc: ../data/runs
+    train_dir: train
+
+dataset_parameters:
+    input_size: [3, 224, 224]
+    shuffle: True
+
+hyperparameters:
+    epochs: 5
+    batch_size: 64
+    learning_rate: 1e-3
