@@ -587,6 +587,17 @@ class HandPoseDataset(Dataset):
             A transform object to tranform the image.
         target_transform: default ``None``
             A transformation to the labels.
+
+        Arguments
+        ---------
+        image_labels: pandas.DataFrame
+
+        Examples
+        --------
+        >>> import torch
+        >>> import torchvision
+        >>> data = HandPoseDataset(annotations='~/path/to/data.csv', image_dir='~/path/to/images', transform=torchvision.transforms.Resize(448))
+        
         """
         self.image_labels = pd.read_csv(annotations_file)
         self.image_dir = image_dir
