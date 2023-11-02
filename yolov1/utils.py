@@ -237,7 +237,7 @@ def maxpool_dim(input_size, kernel_size, stride=1, padding=0):
 
     return int(np.floor(input_size/kernel_size))
 
-def load_architecture(model_path):
+def load_architecture(model_file_path):
     """Loads model architecture from the yaml file.
     
     Parameters
@@ -263,7 +263,7 @@ def load_architecture(model_path):
 
     """
     # Loading YAML file
-    with open(model_file, 'r') as f:
+    with open(model_file_path, 'r') as f:
         model = yaml.safe_load(f)
 
     return model['architecture']
