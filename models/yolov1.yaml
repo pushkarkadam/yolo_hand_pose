@@ -1,0 +1,51 @@
+nc: 2 # number of classes
+LeakyReLU: 0.1
+
+architecture:
+  [
+      # [from, number of times, module, args [in_channel, out_channel, kernel_size, stride, padding]]
+      # from = -1 --> coming from the previous layer 
+      
+      # Conv. Layer
+      [-1, 1, Conv, LeakyReLU, [3, 64, 7, 2, 3]],
+      # Maxpool Layer
+      [-1, 1, MaxPool, [2, 2, 0]], # [kernel_size, stride, padding]
+      
+      # Conv. Layer
+      [-1, 1, Conv, LeakyReLU, [64, 192, 3, 1, 1]],
+      # Maxpool Layer
+      [-1, 1, MaxPool, [2, 2, 0]],
+
+      # Conv. Layers 
+      [-1, 1, Conv, LeakyReLU, [192, 128, 1, 1, 0]],
+      [-1, 1, Conv, LeakyReLU, [128, 256, 3, 1, 1]],
+      [-1, 1, Conv, LeakyReLU, [256, 256, 1, 1, 0]],
+      [-1, 1, Conv, LeakyReLU, [256, 512, 3, 1, 1]],
+      # Maxpool Layer
+      [-1, 1, MaxPool, [2, 2, 0]],
+
+      # Conv.Layers
+      # CN will have 'N' convolution with the last N elements of the list as Conv arguments.
+      # Repeating two convolutions 4 times
+      [-1, 4, CN, LeakyReLU, [512, 256, 1, 1, 0], [256, 512, 3, 1, 1]],
+      [-1, 1, Conv, LeakyReLU, [512, 512, 1, 1, 0]],
+      [-1, 1, Conv, LeakyReLU, [512, 1024, 3, 1, 1]],
+      # Maxpool layer
+      [-1, 1, MaxPool, [2, 2, 0]],
+
+      # Conv. Layers
+      [-1, 2, CN, LeakyReLU, [1024, 512, 1, 1, 0], [512, 1024, 3, 1, 1]],
+      [-1, 1, Conv, LeakyReLU, [1024, 1024, 3, 1, 1]],
+      [-1, 1, Conv, LeakyReLU, [1024, 1024, 3, 2, 1]],
+      
+      # Conv. Layers
+      [-1, 1, Conv, [1024, 1024, 3, 1, 1]],
+      [-1, 1, Conv, [1024, 1024, 3, 1, 1]],
+
+      # Conn. Layer
+      [-1, 1, Flatten],
+      # [from, num_times, layer, activation, out_features]
+      [-1, 1, Fc, ReLU, 4096],
+      [-1, 1, Dropout, 0.5],
+      [-1, 1, Fc, None, 30]
+  ]
