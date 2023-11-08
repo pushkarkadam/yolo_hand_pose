@@ -146,5 +146,4 @@ class Yolo(torch.nn.Module):
                 
             if layer[2] == 'Dropout':
                 probs = layer[-1]
-                print(probs)
                 self.layers.append(torch.nn.Dropout(p=probs))

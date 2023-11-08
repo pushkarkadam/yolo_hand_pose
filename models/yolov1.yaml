@@ -47,5 +47,5 @@ architecture:
       # [from, num_times, layer, activation, out_features]
       [-1, 1, Fc, ReLU, 4096],
       [-1, 1, Dropout, 0.5],
-      [-1, 1, Fc, None, 30]
+      [-1, 1, Fc, None, 1470]
   ]
