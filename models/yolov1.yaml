@@ -46,6 +46,8 @@ architecture:
       [-1, 1, Flatten],
       # [from, num_times, layer, activation, out_features]
       [-1, 1, Fc, ReLU, 4096],
+      # [from, num_times, layer, dropout probability]
       [-1, 1, Dropout, 0.5],
-      [-1, 1, Fc, None, 1470]
+      # TODO: Replace ReLU by Linear 
+      [-1, 1, Fc, ReLU, 1470]
   ]
