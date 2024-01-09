@@ -1,5 +1,9 @@
-nc: 2 # number of classes
+nc: 20 # number of classes
 LeakyReLU: 0.1
+# anchors: [0.25,0.25, 0.5,0.5, 0.75,0.75] #[anchor1_w, anchor1_h, anchor2_w, anchor2_h] 
+anchors: [0.25,0.25, 0.5,0.5]
+nkpt: 0
+grid: 7
 
 architecture:
   [
@@ -46,8 +50,6 @@ architecture:
       [-1, 1, Flatten],
       # [from, num_times, layer, activation, out_features]
       [-1, 1, Fc, ReLU, 4096],
-      # [from, num_times, layer, dropout probability]
       [-1, 1, Dropout, 0.5],
-      # TODO: Replace ReLU by Linear 
-      [-1, 1, Fc, ReLU, 1470]
+      [-1, 1, Detect, ReLU]
   ]

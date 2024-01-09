@@ -4,11 +4,31 @@ from .utils import *
 
 
 class Yolo(torch.nn.Module):
-    def __init__(self, architecture, input_size=(3,448,448), dropout_probs=0.5, leaky_relu_negative_slope=0.1):
+    def __init__(self, yolo_config, input_size=(3,448,448), dropout_probs=0.5, leaky_relu_negative_slope=0.1):
         """YOLO"""
         super(Yolo, self).__init__()
+        
+        if isinstance(yolo_config, dict):
+            self.yolo_config = yolo_config  # model dict
+        else:  # is *.yaml
+            with open(yolo_config, 'r') as f:
+                self.yolo_config = yaml.safe_load(f)
+        
         # architecture
-        self.architecture = architecture
+        self.architecture = self.yolo_config['architecture']
+        
+        # Grid size
+        self.grid = self.yolo_config['grid']
+        
+        # Number of classes
+        self.nc = self.yolo_config['nc']
+        
+        # Anchors
+        self.anchors = self.yolo_config['anchors']
+        self.num_anchors = int(len(self.anchors) / 2) 
+        
+        # Keypoints
+        self.nkpt = self.yolo_config['nkpt']
         
         # A list to store the layers
         self.layers = []
@@ -115,7 +135,8 @@ class Yolo(torch.nn.Module):
             if layer[2] == 'Flatten':
                 self.layers.append(torch.nn.Flatten())
                 
-                
+            # Fully Connected layer
+            # comprises of torch.nn.Linear
             if layer[2] == 'Fc':
                 # From architecture
                 out_features = layer[4]
@@ -143,7 +164,20 @@ class Yolo(torch.nn.Module):
                                                       ))
                     self.model_structure.append([None, in_features, out_features])
                 
-                
+            # Dropout    
             if layer[2] == 'Dropout':
                 probs = layer[-1]
                 self.layers.append(torch.nn.Dropout(p=probs))
+                
+            if layer[2] == 'Detect':
+                out_features = self.grid * self.grid * (self.num_anchors * 5 + self.nkpt * 3 + self.nc)
+                activation_type = layer[3]
+                
+                in_features = self.model_structure[-1][-1]
+                
+                for i in range(number):
+                    self.layers.append(Fc(in_features=in_features,
+                                          out_features=out_features,
+                                          activation_type=activation_type
+                                         ))
+                    self.model_structure.append([None, in_features, out_features])
