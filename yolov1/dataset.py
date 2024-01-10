@@ -619,9 +619,9 @@ class HandPoseDataset(Dataset):
         normalized_image = normalize_transform(image)
         
         # Extracting the label column from dataframe
-        labels = self.image_labels.iloc[idx, 1]
+        labels = self.image_labels.iloc[idx, 1:].tolist()
 
-        labels = labels.astype(np.int_)
+        labels = torch.FloatTensor(labels)
         
         # Applying for transforms if any
         if self.transform:
