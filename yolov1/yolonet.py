@@ -176,8 +176,13 @@ class Yolo(torch.nn.Module):
                 in_features = self.model_structure[-1][-1]
                 
                 for i in range(number):
-                    self.layers.append(Fc(in_features=in_features,
-                                          out_features=out_features,
-                                          activation_type=activation_type
-                                         ))
+                    if activation_type == 'ReLU':
+                        self.layers.append(Fc(in_features=in_features,
+                                              out_features=out_features,
+                                              activation_type=activation_type
+                                             ))
+                    else:
+                        self.layers.append(torch.nn.Linear(in_features=in_features,
+                                                           out_features=out_features
+                                                          ))
                     self.model_structure.append([None, in_features, out_features])
