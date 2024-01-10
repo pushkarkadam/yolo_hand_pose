@@ -5,7 +5,44 @@ from .utils import *
 
 class Yolo(torch.nn.Module):
     def __init__(self, yolo_config, input_size=(3,448,448), dropout_probs=0.5, leaky_relu_negative_slope=0.1):
-        """YOLO"""
+        """YOLO model.
+        Creates the model from the ``yolo_config`` file.
+        
+        Arguments
+        ---------
+        grid: int
+            Grid size of the image.
+        nc: int
+            Number of classes.
+        anchors: list
+            A list of anchor boxes
+        num_anchors: int
+            Number of anchor boxes
+        nkpt: int
+            Number of keypoints
+        layers: list
+            Layers of the network
+        model_structure: list
+            A list of model structure that stores the dimensions of the network.
+        
+        Parameters
+        ----------
+        yolo_config: str
+            A string or a dict.
+            If string, then path to the ``.yaml`` file to the network architecture and other parameters.
+            If dict, then the dictionary that consists of architecutre and yolo network parameters.
+        input_size: tuple, default ``(3,448,448)``
+            The input image size
+        dropout_probs: float, default ``0.5``
+            The dropout probability for dropout layer.
+        leaky_relu_negative_slope: float, default ``0.1``
+            Threshold value for leky relu.
+            
+        Returns
+        -------
+        YOLO network
+        
+        """
         super(Yolo, self).__init__()
         
         if isinstance(yolo_config, dict):
