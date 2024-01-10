@@ -5,3 +5,4 @@ from .train import *
 from .dataset import *
 from .modules import *
 from .convnet import *
+from .yolonet import *
