@@ -615,7 +615,7 @@ def load_checkpoint(checkpoint, model, optimizer):
 
 
 # YOLO dev function
-def get_relative_landmarks(annot):
+def get_relative_landmarks(labels):
     """Gets relative landmarks to the center of bounding box.
     
     Relative landmarks are the polar coordinates of the keypoints w.r.t. bounding box center.
@@ -623,7 +623,7 @@ def get_relative_landmarks(annot):
     
     Parameters
     ----------
-    annot: list
+    labels: list
         A list of all the annotation of format ``[class, x, y, w, h, px1, px2, ... ,pxn, pyn]``
         
     Returns
@@ -631,15 +631,15 @@ def get_relative_landmarks(annot):
     list
     
     """
-    class_label = annot[0]
-    box_dim = annot[1:5]
-    landmarks = annot[5:]
+    class_label = labels[0]
+    box_dim = labels[1:5]
+    landmarks = labels[5:]
     relative_landmarks = []
 
     x,y,w,h = box_dim
 
     i = 0
-    while i < int(len(landmarks)/2):
+    while i < int(len(landmarks)):
         px, py = landmarks[i:i+2]
 
         # Relative from bounding box center
@@ -662,6 +662,6 @@ def get_relative_landmarks(annot):
         relative_landmarks.append(alpha)
 
         # incrementing
-        i += 1
+        i += 2
     
     return relative_landmarks
