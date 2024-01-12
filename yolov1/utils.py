@@ -630,6 +630,13 @@ def get_relative_landmarks(labels):
     -------
     list
     
+    Examples
+    --------
+    >>> from utils import get_relative_landmarks
+    >>> labels = [1, 0.6,0.6,0.4,0.4,0.2,0.2,0.6,0.2,0.8,0.6]
+    >>> get_relative_landmarks(labels)
+    [0.565685424949238, 0.625, 0.39999999999999997, 0.75, 0.20000000000000007, 0.0]
+    
     """
     class_label = labels[0]
     box_dim = labels[1:5]
