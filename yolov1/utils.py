@@ -672,3 +672,58 @@ def get_relative_landmarks(labels):
         i += 2
     
     return relative_landmarks
+
+def relative_to_cartesian(labels, landmarks):
+    """Converts the the cartesian landmarks.
+    
+    Function to check if the conversion is correct.
+    
+    Parameters
+    ----------
+    labels: list
+        A list of labels.
+    landmakrs: list
+        A list in the polar coordinates w.r.t. the center of bounding box.
+        
+    Returns
+    -------
+    list:
+        A list of converted coordinates.
+    
+    Examples
+    --------
+    >>> from utils import relative_to_cartesian
+    >>> labels = [1, 0.6,0.6,0.4,0.4,0.2,0.2,0.6,0.2]  # [class, x, y, w, h, px1, py1, px2, py2]
+    >>> results = [0.5657, 0.625, 0.4, 0.75] # [r1, alpha1, r2, alpha2]
+    >>> relative_to_cartesian(labels, results)
+    [0.19998969388277, 0.1999896938827701, 0.5999999999999999, 0.19999999999999996]
+    
+    """
+    
+    class_label = labels[0]
+    box_dim = labels[1:5]
+    cartesian_landmarks = []
+
+    x,y,w,h = box_dim
+
+    i = 0
+    while i < int(len(landmarks)):
+        r, alpha = landmarks[i:i+2]
+        
+        # Re-normalizing
+        alpha = alpha * (2 * np.pi)
+
+        # Relative from bounding box center
+        px = r * np.cos(alpha)
+        py = r * np.sin(alpha)
+        
+        px_c = px + x
+        py_c = py + y
+        
+        cartesian_landmarks.append(px_c)
+        cartesian_landmarks.append(py_c)
+
+        # incrementing
+        i += 2
+    
+    return cartesian_landmarks
