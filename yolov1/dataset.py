@@ -620,16 +620,31 @@ class HandPoseDataset(Dataset):
         
         # Extracting the label column from dataframe
         labels = self.image_labels.iloc[idx, 1:].tolist()
-
-        labels = torch.FloatTensor(labels)
+    
+        class_label = labels[0]
+        box_dim = labels[1:5]
+    
+        if self.polar_landmarks:
+            landmarks = get_relative_landmarks(labels)
+        else:
+            landmarks = labels[5:]
         
         # Applying for transforms if any
         if self.transform:
             normalized_image = self.transform(normalized_image)
         if self.target_transform:
-            labels = self.target_transform(labels)
+            label = self.target_transform(label)
+            box_dim = self.target_transform(box_dim)
+            landmarks = self.target_transform(landmarks)
+            
+        data = {'image': normalized_image,
+                'class_label': class_label,
+                'box_dim': torch.FloatTensor(box_dim),
+                'landmarks': torch.FloatTensor(landmarks),
+                'labels': torch.FloatTensor(labels)
+               }
 
-        return normalized_image, labels
+        return data
 
 class VOCDataset(torch.utils.data.Dataset):
     def __init__(
