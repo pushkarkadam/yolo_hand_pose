@@ -60,10 +60,9 @@ class Yolo(torch.nn.Module):
         # Number of classes
         self.nc = self.yolo_config['nc']
         
-        # Anchors
-        self.anchors = self.yolo_config['anchors']
-        self.num_anchors = int(len(self.anchors) / 2) 
-        
+        # Boxes
+        self.boxes = self.yolo_config['boxes']
+
         # Keypoints
         self.nkpt = self.yolo_config['nkpt']
         
@@ -207,7 +206,7 @@ class Yolo(torch.nn.Module):
                 self.layers.append(torch.nn.Dropout(p=probs))
                 
             if layer[2] == 'Detect':
-                out_features = self.grid * self.grid * (self.num_anchors * 5 + self.nkpt * 3 + self.nc)
+                out_features = self.grid * self.grid * (self.boxes * (5 + self.nkpt * 2) + self.nc)
                 activation_type = layer[3]
                 
                 in_features = self.model_structure[-1][-1]
