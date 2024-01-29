@@ -14,6 +14,7 @@ from torchvision.io import read_image
 import torch.nn.functional as F 
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
+from .utils import *
 
 
 class FreiHand:
@@ -574,7 +575,17 @@ def mirror_annotations(labels, escape_cols=2, u=1, v=0):
     return df_combined
 
 class HandPoseDataset(Dataset):
-    def __init__(self, annotations_file, image_dir, transform=None, target_transform=None):
+    def __init__(self, 
+                 annotations_file, 
+                 image_dir, 
+                 transform=None, 
+                 target_transform=None, 
+                 polar_landmarks=True,
+                 grid_size=7,
+                 num_boxes=2,
+                 num_landmarks=21,
+                 num_classes=2
+                ):
         """Reads Freihand dataset stored in the YOLO format.
         
         Parameters
@@ -587,6 +598,15 @@ class HandPoseDataset(Dataset):
             A transform object to tranform the image.
         target_transform: default ``None``
             A transformation to the labels.
+        polar_landmarks: default ``True``
+            A boolean whether to convert to the polar coordinate system.
+        grid_size: int, default ``7``
+            The grid size of the image.
+        num_boxes: int, default ``2``
+            The number of boxes to predict.
+        num_landmarks: int, default ``21``
+            Number of landmarks
+        num_classes: int, ``2``
 
         Arguments
         ---------
@@ -603,6 +623,11 @@ class HandPoseDataset(Dataset):
         self.image_dir = image_dir
         self.transform = transform
         self.target_transform = target_transform
+        self.polar_landmarks = polar_landmarks
+        self.grid_size = grid_size
+        self.num_boxes = num_boxes
+        self.num_landmarks = num_landmarks
+        self.num_classes = num_classes
         
     def __len__(self):
         return len(self.image_labels)
@@ -611,6 +636,8 @@ class HandPoseDataset(Dataset):
         image_path = os.path.join(self.image_dir, self.image_labels.iloc[idx, 0])
         # Transposing the image to store it in pytorch tensor format [channel, row, col]
         image = cv2.imread(image_path)
+        
+        img_w, img_h, _ = image.shape
         
         # Creating a normalised transform object
         normalize_transform = transforms.ToTensor()
@@ -621,14 +648,14 @@ class HandPoseDataset(Dataset):
         # Extracting the label column from dataframe
         labels = self.image_labels.iloc[idx, 1:].tolist()
     
-        class_label = labels[0]
+        class_label = int(labels[0])
         box_dim = labels[1:5]
     
         if self.polar_landmarks:
             landmarks = get_relative_landmarks(labels)
         else:
             landmarks = labels[5:]
-        
+            
         # Applying for transforms if any
         if self.transform:
             normalized_image = self.transform(normalized_image)
@@ -637,11 +664,46 @@ class HandPoseDataset(Dataset):
             box_dim = self.target_transform(box_dim)
             landmarks = self.target_transform(landmarks)
             
+        # Generating ground truths
+        # Generate a zeros tensor
+        S = self.grid_size
+        B = self.num_boxes
+        K = self.num_landmarks
+        C = self.num_classes
+        channels = 5 + 2 * K + C
+        ground_truth = torch.zeros(channels, S, S)
+        
+        # box scores
+        x, y, w, h = box_dim
+        i = int(np.floor(S * x))
+        j = int(np.floor(S * y))
+        
+        # Creating a vector of class
+        class_vector = torch.zeros(C, dtype=torch.int32).tolist()
+        class_vector[class_label] = 1
+        
+        # Ground truth: confidence + bounding box [x,y,w,h] + landmarks [r1, a1, ..., r21, a21] + class [c1, c2]
+        ground_truth_labels = [1] + box_dim + landmarks + class_vector
+        
+        # Sliding the vector in the grid responsible for prediction
+        ground_truth[:,i,j] = torch.tensor(ground_truth_labels)
+        
+        # Breaking the ground truth data
+        confidence_gt = ground_truth[0,...]
+        box_gt = ground_truth[1:5,...]
+        landmarks_gt = ground_truth[5:5+2*K, ...]
+        classes_gt = ground_truth[5+2*K:,...]
+            
         data = {'image': normalized_image,
                 'class_label': class_label,
                 'box_dim': torch.FloatTensor(box_dim),
                 'landmarks': torch.FloatTensor(landmarks),
-                'labels': torch.FloatTensor(labels)
+                'labels': torch.FloatTensor(labels),
+                'ground_truth': ground_truth,
+                'confidence_gt': confidence_gt,
+                'box_gt': box_gt,
+                'landmarks_gt': landmarks_gt,
+                'classes_gt': classes_gt
                }
 
         return data
