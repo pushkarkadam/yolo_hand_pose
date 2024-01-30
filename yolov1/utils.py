@@ -794,17 +794,21 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
     
     output = predictions.reshape(1,channels, S, S)
     
-    # confidence tensor
-    confidence = output[:,0,...]
+    # storing confidence score
+    confidence = []
     
+    # Storing boxes
     boxes = []
     
     # Assigning start and end for tensor slicing
-    start = 1
+    start = 0
     end = 0
     
     # Iterating over the boxes
     for box in range(num_boxes):
+        temp_confidence = output[:,start,...]
+        confidence.append(temp_confidence)
+        start += 1
         # 4 (x,y,w,h) + 2 * 21 (px, py) or (r, alpha)
         end = start + 4 + 2 * num_landmarks 
         temp_box = output[:,start:end, ...]
