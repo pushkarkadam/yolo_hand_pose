@@ -691,6 +691,8 @@ class HandPoseDataset(Dataset):
         # Breaking the ground truth data
         confidence_gt = ground_truth[0,...]
         box_gt = ground_truth[1:5,...]
+        box_xy = box_gt[:2, ...]
+        box_wh = box_gt[2:,...]
         landmarks_gt = ground_truth[5:5+2*K, ...]
         classes_gt = ground_truth[5+2*K:,...]
             
@@ -702,6 +704,8 @@ class HandPoseDataset(Dataset):
                 'ground_truth': ground_truth,
                 'confidence_gt': confidence_gt,
                 'box_gt': box_gt,
+                'box_xy': box_xy,
+                'box_wh': box_wh,
                 'landmarks_gt': landmarks_gt,
                 'classes_gt': classes_gt
                }
