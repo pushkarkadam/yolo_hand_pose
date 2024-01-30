@@ -727,3 +727,100 @@ def relative_to_cartesian(labels, landmarks):
         i += 2
     
     return cartesian_landmarks
+
+def break_boxes(boxes):
+    """Breaks the bounding box and landmarks.
+    
+    Parameters
+    ----------
+    boxes: list
+        A list of torch.tensor.
+        
+    Returns
+    -------
+    bboxes_xy: list
+        A list of bounding box centers ``torch.tensor``
+    bboxes_wh: list
+        A list of bounding box dimension ``torch.tensor``
+    landmarks: list
+        A list of landmarks ``torch.tensor``
+        
+    """
+    bboxes_xy = []
+    bboxes_wh = []
+    landmarks = []
+    
+    for box in boxes:
+        # box centers
+        temp_box_xy = box[:,:2,...]
+        bboxes_xy.append(temp_box_xy)
+        
+        # width and height
+        temp_box_wh = box[:,2:4,...]
+        bboxes_wh.append(temp_box_wh)
+        
+        temp_landmarks = box[:,4:,...]
+        landmarks.append(temp_landmarks)
+        
+    return bboxes_xy, bboxes_wh, landmarks
+
+def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
+    """Returns the tensors.
+    
+    Parameters
+    ----------
+    predictions: torch.tensor
+        The prediction encodings from YOLO network output.
+    num_boxes: int
+        Number of boxes
+    num_landmarks: int
+        Number of landmarks
+    grid_size: int
+        Size of the grid
+    
+    Returns
+    -------
+    confidence: torch.tensor
+        A tensor of confidence score
+    boxes: list
+        A list of tensors for bounding box and keypoints
+    classes: torch.tensor
+        A tensor of classes
+    
+    """
+    S = grid_size
+    
+    channels = num_boxes * (5 + 2 * num_landmarks) + num_classes
+    
+    output = predictions.reshape(1,channels, S, S)
+    
+    # confidence tensor
+    confidence = output[:,0,...]
+    
+    boxes = []
+    
+    # Assigning start and end for tensor slicing
+    start = 1
+    end = 0
+    
+    # Iterating over the boxes
+    for box in range(num_boxes):
+        # 4 (x,y,w,h) + 2 * 21 (px, py) or (r, alpha)
+        end = start + 4 + 2 * num_landmarks 
+        temp_box = output[:,start:end, ...]
+        boxes.append(temp_box)
+        start = end
+        
+    # Classes tensor    
+    classes = output[:,-num_classes:,...]
+    
+    bboxes_xy, bboxes_wh, landmarks = break_boxes(boxes)
+    
+    data = {"confidence": confidence,
+            "bboxes_xy": bboxes_xy,
+            "bboxes_wh": bboxes_wh,
+            "landmarks": landmarks,
+            "classes": classes
+           }
+    
+    return data
