@@ -828,3 +828,45 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
            }
     
     return data
+
+def iou(box1, box2):
+    """Returns IOU
+    
+    Parameters
+    ----------
+    box1: list
+        A list of torch.tensor ``[x1_min, y1_min, x1_max, y1_max]``
+    box2: list
+        A list of torch.tensor ``[x2_min, y2_min, x2_max, y2_max]``    
+    
+    Returns
+    -------
+    torch.tensor
+    
+    """
+    x1_min, y1_min, x1_max, y1_max = box1
+    x2_min, y2_min, x2_max, y2_max = box2
+    
+    xi_min = torch.max(x1_min, x2_min)
+    yi_min = torch.max(y1_min, y2_min)
+    
+    xi_max = torch.min(x1_max, x2_max)
+    yi_max = torch.min(y1_max, y2_max)
+    
+    inter_width = xi_max - xi_min
+    inter_height = yi_max - yi_min
+    
+    inter_area = torch.max(inter_width, torch.tensor(0)) * torch.max(inter_height, torch.tensor(0))
+    
+    # Box area
+    box1_area = (x1_max - x1_min) * (y1_max - y1_min)
+    box2_area = (x2_max - x2_min) * (y2_max - y2_min)
+    union_area = box1_area + box2_area - inter_area
+    
+    mask = (union_area != 0)
+    
+    iou = torch.full_like(inter_area, fill_value=float(0))
+    
+    iou[mask] = inter_area[mask] / union_area[mask]
+    
+    return iou
