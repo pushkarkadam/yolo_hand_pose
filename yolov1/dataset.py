@@ -677,6 +677,13 @@ class HandPoseDataset(Dataset):
         x, y, w, h = box_dim
         i = int(np.floor(S * x))
         j = int(np.floor(S * y))
+
+        # x and y coordinates relative to the grid cell
+        x_cell = x * S - i 
+        y_cell = y * S - j
+
+        # Updating the box_dim
+        box_dim = [x_cell, y_cell, w, h]
         
         # Creating a vector of class
         class_vector = torch.zeros(C, dtype=torch.int32).tolist()
