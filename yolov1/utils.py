@@ -895,3 +895,28 @@ def iou(box1, box2):
     iou = inter_area / union_area
     
     return iou
+
+def cell_to_image(box_xy):
+    """Converts x and y tensor from cell to image relative.
+    
+    Parameters
+    ----------
+    box_xy: torch.tensor
+        The ``box_xy`` tensor which is relative to the cell.
+        
+    """
+    grid_size = box_xy.shape[-1]
+    
+    x = box_xy[:,0,...]
+    y = box_xy[:,1,...]
+    
+    x_mask = (x != 0)
+    y_mask = (y != 0)
+    
+    x = (x + torch.tensor(range(grid_size))) / grid_size
+    x = x * x_mask
+    
+    y = (y + torch.tensor(range(grid_size))) / grid_size
+    y = y * y_mask
+    
+    return x, y
