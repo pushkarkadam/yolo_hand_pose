@@ -829,6 +829,35 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
     
     return data
 
+def yolo_boxes_to_corners(box_xy, box_wh):
+    """Convert YOLO box predictions to bounding box corners.
+    
+    This is useful for converting the box coordinates in (x,y,w,h) format
+    to (x_min, y_min, x_max, y_max) format 
+    
+    Parameters
+    ----------
+    box_xy: torch.tensor
+        The xy coordinates of the bounding box.
+    box_wh: torch.tensor
+        The width and height value tensors of bounding box.
+    
+    Returns
+    -------
+    list
+    
+    """
+    box_mins = box_xy - (box_wh / 2.)
+    box_maxes = box_xy + (box_wh / 2.)
+    
+    x_min = box_mins[:,0,...]
+    y_min = box_mins[:,1,...]
+    x_max = box_maxes[:,0,...]
+    y_max = box_maxes[:,1,...]
+    
+    boxes = [x_min, y_min, x_max, y_max]
+    return boxes
+
 def iou(box1, box2):
     """Returns IOU
     
@@ -863,10 +892,6 @@ def iou(box1, box2):
     box2_area = (x2_max - x2_min) * (y2_max - y2_min)
     union_area = box1_area + box2_area - inter_area
     
-    mask = (union_area != 0)
-    
-    iou = torch.full_like(inter_area, fill_value=float(0))
-    
-    iou[mask] = inter_area[mask] / union_area[mask]
+    iou = inter_area / union_area
     
     return iou
