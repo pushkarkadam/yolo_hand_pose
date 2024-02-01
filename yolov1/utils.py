@@ -891,8 +891,12 @@ def iou(box1, box2):
     box1_area = (x1_max - x1_min) * (y1_max - y1_min)
     box2_area = (x2_max - x2_min) * (y2_max - y2_min)
     union_area = box1_area + box2_area - inter_area
+
+    mask = (union_area != 0)
+
+    iou = torch.full_like(inter_area, fill_value=float(0))
     
-    iou = inter_area / union_area
+    iou[mask] = inter_area[mask] / union_area[mask]
     
     return iou
 
