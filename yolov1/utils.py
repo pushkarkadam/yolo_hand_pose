@@ -924,3 +924,31 @@ def cell_to_image(box_xy):
     y = y * y_mask
     
     return x, y
+
+def predictor_box(boxes, index):
+    """A list of boxes.
+    
+    Parameters
+    ----------
+    boxes: list
+        A list of ``torch.Tensor``
+    index: torch.Tensor
+        A tensor of index that indicates which tensor has max iou score.
+        
+    Returns
+    -------
+    torch.Tensor
+    
+    """
+    # Getting shape of the index
+    row, col = index.shape
+    
+    # Creating a torch tensor of zeros
+    best_box = torch.zeros(boxes[0].shape)
+
+    for r in range(row):
+        for c in range(col):
+            box = boxes[index.tolist()[r][c]]
+            best_box[:,r,c] = box[:,r,c]
+        
+    return best_box
