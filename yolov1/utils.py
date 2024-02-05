@@ -952,3 +952,44 @@ def predictor_box(boxes, index):
             best_box[:,r,c] = box[:,r,c]
         
     return best_box
+
+def relative_cartesian_tensor(landmarks):
+    """Returns the cartesian coordinates of the polar tensor.
+    
+    This is useful during computing the loss function.
+    The input tensor is organised as ``(2*K, S, S)`` dimensional tensor.
+    The distance ``r`` and angle ``alpha`` for each landmark are organised
+    sequentially as channels of the tensors. 
+    So, ``[r_1, alpha_1, ... , r_K, alpha_K]`` are the matrix of ``(S, S)`` dimension
+    along with the ``2*K`` landmakrs as the channels.
+    
+    The output of this function is a tensor of size ``(2*K, S, S)`` with the channels
+    ``[px_1, py_1, ..., px_K, py_K]`` with each of the channels of ``(S, S)`` dimensional matrix.
+    
+    Parameters
+    ----------
+    landmarks: torch.Tensor
+        A tensor of size ``(2*K, S, S)``.
+    
+    Returns
+    -------
+    torch.Tensor
+    
+    """
+    lmk_xy = torch.zeros(landmarks.shape)
+    
+    K, S, _ = landmarks.shape
+    
+    i = 0
+    while i < int(K/2):
+        r, alpha = landmarks[i:i+2, ...]
+        alpha = alpha * (2 * torch.pi)
+        
+        px = r * torch.cos(alpha)
+        py = r * torch.sin(alpha)
+        
+        lmk_xy[i:i+2,...] = torch.cat([px.unsqueeze(0), py.unsqueeze(0)], dim=0)
+        
+        i += 2
+    
+    return lmk_xy
