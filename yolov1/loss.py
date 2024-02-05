@@ -1,34 +1,38 @@
 import torch
 import torch.nn as nn
-from .utils import intersection_over_union
+from .utils import *
 
 
 class YoloLoss(nn.Module):
     """YOLO loss"""
-    def __init__(self, S=7, B=2, C=2, K=21):
+    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1):
         super(YoloLoss, self).__init__()
         self.mse = nn.MSELoss(reduction="sum")
         self.S = S
         self.B = B
         self.C = C
+        self.K = K
+        self.batch_size=batch_size
         self.lambda_noobj = 0.5
         self.lambda_coord = 5
         self.lamda_keypoint = 0.5
         
     def forward(self, predictions, target):
-        pred = yolo_head(predictions, num_boxes=B, num_landmarks=K, num_classes=C, grid_size=S)
+        pred = yolo_head(predictions, num_boxes=self.B, num_landmarks=self.K, num_classes=self.C, grid_size=self.S, batch_size=self.batch_size)
         
         # Extracting Prediction
         pred_boxes_xy = pred['bboxes_xy']
         pred_boxes_wh = pred['bboxes_wh']
         pred_boxes_classes = pred['classes']
         pred_boxes_conf = pred['confidence']
+        pred_boxes_landmarks = pred['landmarks']
         
         # Extracting Ground Truth Target
         target_box_xy = target['box_xy']
         target_box_wh = target['box_wh']
         target_box_classes = target['classes_gt']
         target_box_confidence = target['confidence_gt']
+        target_box_landmarks = target['landmarks_gt']
         
         target_box_corners = yolo_boxes_to_corners(target_box_xy, target_box_wh)
         
@@ -88,8 +92,15 @@ class YoloLoss(nn.Module):
         # Keypoint loss
         # Reshaping from (1,2*K,S,S) to (2*K, S, S)
         target_lmk = target_box_landmarks.squeeze()
-        
-        pred_lmk = exists_box * predictor_lmk
+
+        # Reshaping to broadcast multiplication across the channels of landmark tensor
+        exists_lmk_box = exists_box.reshape(self.batch_size, self.S, self.S, 1)
+
+        # Broadcasting multiplication
+        pred_lmk = exists_lmk_box * predictor_lmk.transpose(dim0=1, dim1=-1)
+
+        # Reshaping the tensor
+        pred_lmk = pred_lmk.reshape(self.batch_size, self.K*2, self.S, self.S)
         
         lmk_xy_target = relative_cartesian_tensor(target_lmk)
         lmk_xy_pred = relative_cartesian_tensor(pred_lmk)
