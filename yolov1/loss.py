@@ -53,13 +53,15 @@ class YoloLoss(nn.Module):
         # Squeezing the box dimensions to convert from (1, 2, S, S) to (2, S, S)
         pred_boxes_xy = [box.squeeze(0) for box in pred_boxes_xy]
         pred_boxes_wh = [box.squeeze(0) for box in pred_boxes_wh]
+        pred_boxes_lmk = [box.squeeze(0) for box in pred_boxes_landmarks]
         
         # Finding the box responsible for prediction
         predictor_xy = predictor_box(pred_boxes_xy, best_box_index.squeeze(0))
         predictor_wh = predictor_box(pred_boxes_wh, best_box_index.squeeze(0))
         predictor_conf = predictor_box(pred_boxes_conf, best_box_index.squeeze(0))
-        # TODO: Implement predictor_box function for keypoints
-        # predictor_k = predictor_box(t)
+        
+        # Implement predictor_box function for keypoints
+        predictor_lmk = predictor_box(pred_boxes_lmk, best_box_index.squeeze(0))
 
         # Coordinate losses
         # xy loss
@@ -77,15 +79,24 @@ class YoloLoss(nn.Module):
         # confidence not object loss
         no_exists_box = (1 - exists_box)
         no_predictor_conf = no_exists_box * predictor_conf
-        noobj_loss = self.lambda_noobj * self.mse(torch.flatten(no_predictor_conf), torch.flatten(target_confidence)) 
+        noobj_loss = self.lambda_noobj * self.mse(torch.flatten(no_predictor_conf), torch.flatten(target_box_confidence)) 
 
         # class loss
         pred_boxes_classes = exists_box * pred_boxes_classes
         class_loss = self.mse(torch.flatten(pred_boxes_classes), torch.flatten(target_box_classes))
 
-        # TODO: Keypoint loss
+        # Keypoint loss
+        # Reshaping from (1,2*K,S,S) to (2*K, S, S)
+        target_lmk = target_box_landmarks.squeeze()
+        
+        pred_lmk = exists_box * predictor_lmk
+        
+        lmk_xy_target = relative_cartesian_tensor(target_lmk)
+        lmk_xy_pred = relative_cartesian_tensor(pred_lmk)
+        
+        landmark_loss = self.mse(torch.flatten(lmk_xy_target), torch.flatten(lmk_xy_pred))
 
         # Computing total loss
-        loss = xy_loss + wh_loss + obj_loss + noobj_loss + class_loss
+        loss = xy_loss + wh_loss + obj_loss + noobj_loss + class_loss + landmark_loss
         
         return loss
