@@ -764,7 +764,7 @@ def break_boxes(boxes):
         
     return bboxes_xy, bboxes_wh, landmarks
 
-def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
+def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, batch_size=1):
     """Returns the tensors.
     
     Parameters
@@ -777,6 +777,8 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
         Number of landmarks
     grid_size: int
         Size of the grid
+    batch_size: int
+        The batch size of the data
     
     Returns
     -------
@@ -792,7 +794,7 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size):
     
     channels = num_boxes * (5 + 2 * num_landmarks) + num_classes
     
-    output = predictions.reshape(1,channels, S, S)
+    output = predictions.reshape(batch_size,channels, S, S)
     
     # storing confidence score
     confidence = []
@@ -941,15 +943,16 @@ def predictor_box(boxes, index):
     
     """
     # Getting shape of the index
-    row, col = index.shape
+    m, row, col = index.shape
     
     # Creating a torch tensor of zeros
     best_box = torch.zeros(boxes[0].shape)
-
-    for r in range(row):
-        for c in range(col):
-            box = boxes[index.tolist()[r][c]]
-            best_box[:,r,c] = box[:,r,c]
+    
+    for i in range(m):
+        for r in range(row):
+            for c in range(col):
+                box = boxes[index[i,...].tolist()[r][c]]
+                best_box[...,r,c] = box[...,r,c]
         
     return best_box
 
@@ -978,17 +981,17 @@ def relative_cartesian_tensor(landmarks):
     """
     lmk_xy = torch.zeros(landmarks.shape)
     
-    K, S, _ = landmarks.shape
+    m, K, S, _ = landmarks.shape
     
     i = 0
     while i < int(K/2):
-        r, alpha = landmarks[i:i+2, ...]
+        r, alpha = landmarks[:,i:i+2, ...]
         alpha = alpha * (2 * torch.pi)
         
         px = r * torch.cos(alpha)
         py = r * torch.sin(alpha)
         
-        lmk_xy[i:i+2,...] = torch.cat([px.unsqueeze(0), py.unsqueeze(0)], dim=0)
+        lmk_xy[:,i:i+2,...] = torch.cat([px.unsqueeze(0), py.unsqueeze(0)], dim=0)
         
         i += 2
     
