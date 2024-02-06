@@ -851,6 +851,12 @@ def yolo_boxes_to_corners(box_xy, box_wh):
     """
     box_mins = box_xy - (box_wh / 2.)
     box_maxes = box_xy + (box_wh / 2.)
+
+    box_mins[box_mins < 0.0] = 0
+    box_mins[box_mins > 1.0] = 1
+    
+    box_maxes[box_maxes > 1.0] = 1
+    box_maxes[box_maxes < 0.0] = 0
     
     x_min = box_mins[:,0,...]
     y_min = box_mins[:,1,...]
