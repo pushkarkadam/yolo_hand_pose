@@ -5,7 +5,7 @@ from .utils import *
 
 class YoloLoss(nn.Module):
     """YOLO loss"""
-    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5):
+    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5, epsilon=1e-7):
         super(YoloLoss, self).__init__()
         self.mse = nn.MSELoss(reduction="sum")
         self.S = S
@@ -16,6 +16,7 @@ class YoloLoss(nn.Module):
         self.lambda_noobj = lambda_noobj
         self.lambda_coord = lambda_coord
         self.lambda_lmk = lambda_lmk
+        self.epsilon = epsilon
         
     def forward(self, predictions, target):
         if type(predictions) == dict:
@@ -83,7 +84,7 @@ class YoloLoss(nn.Module):
         # -------
         predictor_wh = predictor_box(pred_boxes_wh, best_box_index)
         predictor_wh = exists_box * predictor_wh
-        wh_loss = self.lambda_coord * self.mse(torch.flatten(torch.sqrt(torch.abs(predictor_wh))), torch.flatten(torch.sqrt(torch.abs(target_box_wh))))
+        wh_loss = self.lambda_coord * self.mse(torch.flatten(torch.sqrt(torch.abs(predictor_wh) + self.epsilon)), torch.flatten(torch.sqrt(torch.abs(target_box_wh) + self.epsilon)))
 
         # ----------------
         # conf object loss
