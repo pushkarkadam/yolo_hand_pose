@@ -987,18 +987,19 @@ def relative_cartesian_tensor(landmarks):
     """
     lmk_xy = torch.zeros(landmarks.shape)
     
-    m, K, S, _ = landmarks.shape
+    m, K, S, _ = landmarks.shape  
     
-    i = 0
-    while i < int(K/2):
-        r, alpha = landmarks[:,i:i+2, ...]
-        alpha = alpha * (2 * torch.pi)
-        
-        px = r * torch.cos(alpha)
-        py = r * torch.sin(alpha)
-        
-        lmk_xy[:,i:i+2,...] = torch.cat([px.unsqueeze(0), py.unsqueeze(0)], dim=0)
-        
-        i += 2
+    for i in range(m):
+        j = 0
+        while j < int(K):
+            r, alpha = landmarks[i,j:j+2, ...]
+            alpha = alpha * (2 * torch.pi)
+
+            px = r * torch.cos(alpha)
+            py = r * torch.sin(alpha)
+
+            lmk_xy[i,j:j+2,...] = torch.cat([px.unsqueeze(0), py.unsqueeze(0)], dim=0)
+
+            j += 2
     
     return lmk_xy
