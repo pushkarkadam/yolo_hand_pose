@@ -5,7 +5,7 @@ from .utils import *
 
 class YoloLoss(nn.Module):
     """YOLO loss"""
-    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5, epsilon=1e-7):
+    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5, epsilon=1e-6):
         super(YoloLoss, self).__init__()
         self.mse = nn.MSELoss(reduction="sum")
         self.S = S
