@@ -1003,3 +1003,84 @@ def relative_cartesian_tensor(landmarks):
             j += 2
     
     return lmk_xy
+
+def yolo_filter(predictions, threshold=0.5):
+    """Filters the yolo prediction boxes.
+    
+    Parameters
+    ----------
+    predictions: dict
+        A dictionary that consists of all the types of predictions from the yolo output.
+    threshold: float, default ``0.5``
+        A threshold value for bounding box confidence.
+        
+    Returns
+    -------
+    dict
+        A dict of box and values that extracts the bounding box data based on threshold.
+        
+    """
+    # Extracting the box information
+    box_confidence = predictions['confidence']
+    box_xy = predictions['bboxes_xy']
+    box_wh = predictions['bboxes_wh']
+    box_lmk = predictions['landmarks']
+    box_class_probs = predictions['classes']
+    
+    # Calculating box score
+    box_scores = []
+    for b in box_confidence:
+        box_scores.append(b * box_class_probs)
+
+    # Computing the probability of the class confidence
+    box_scores = [c.unsqueeze(0) for c in box_scores]
+    class_conf_score = torch.cat(box_scores, dim=0)
+    max_class_conf, index = torch.max(class_conf_score, dim=0)
+    
+    # Computing the box confidence and the position of best bounding box
+    # responsible for prediction
+    box_confidence = [b.unsqueeze(0) for b in box_confidence]
+    box_conf = torch.cat(box_confidence, dim=0)
+    best_box_conf, best_box_index = torch.max(box_conf, dim=0)
+    
+    # Using the best bounding box in the data
+    predictor_xy = predictor_box(box_xy, best_box_index)
+    predictor_wh = predictor_box(box_wh, best_box_index)
+    predictor_lmk = predictor_box(box_lmk, best_box_index)
+    
+    # Creating a mask using the threshold values for filtering
+    mask = best_box_conf.ge(threshold)
+    
+    # Shape of the mask
+    # m --> sample size
+    m, r, c = mask.shape
+
+    detection_grid = []
+    detection_xy = []
+    detection_wh = []
+    detection_lmk = []
+    detection_class_conf = []
+
+    for s in range(m):
+        detection_grid.append([])
+        detection_xy.append([])
+        detection_wh.append([])
+        detection_lmk.append([])
+        detection_class_conf.append([])
+        for i in range(r):
+            for j in range(c):
+                if mask[s, i,j]:
+                    detection_grid[s].append((i,j))
+                    detection_xy[s].append(predictor_xy[s,:, i, j])
+                    detection_wh[s].append(predictor_wh[s,:, i, j])
+                    detection_lmk[s].append(predictor_lmk[s,:,i, j])
+                    detection_class_conf[s].append(max_class_conf[s,:,i, j])
+    
+    detections = {'grid': detection_grid, 
+                  'xy': detection_xy,
+                  'wh': detection_wh,
+                  'landmarks': detection_lmk,
+                  'class_confidence': detection_class_conf
+                 }
+    
+    return detections

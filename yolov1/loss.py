@@ -62,14 +62,6 @@ class YoloLoss(nn.Module):
         
         # Indicator function that is used to test if the object exists
         exists_box = target['confidence_gt'].unsqueeze(0)
-        
-        predictor_xy = predictor_box(pred_boxes_xy, best_box_index)
-        predictor_wh = predictor_box(pred_boxes_wh, best_box_index)
-        predictor_conf = predictor_box(pred_boxes_conf, best_box_index)
-        no_predictor_conf = predictor_box(pred_boxes_conf, best_box_index)
-        
-        # Implement predictor_box function for keypoints
-        predictor_lmk = predictor_box(pred_boxes_lmk, best_box_index)
 
         # Coordinate losses
         # -------
