@@ -217,6 +217,10 @@ class Yolo(torch.nn.Module):
                                               out_features=out_features,
                                               activation_type=activation_type
                                              ))
+                    elif activation_type == 'Sigmoid':
+                        self.layers.append(Fc(in_features=in_features, out_features=out_features, activation_type=activation_type))
+                    elif activation_type == 'Softmax':
+                        self.layers.append(Fc(in_features=in_features, out_features=out_features, activation_type=activation_type))
                     else:
                         self.layers.append(torch.nn.Linear(in_features=in_features,
                                                            out_features=out_features
