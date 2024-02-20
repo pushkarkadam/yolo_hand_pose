@@ -32,9 +32,10 @@ def show_landmarks(image,
     bounding_box: list
         A list of bounding box coordinates.
     landmarks: list
-        A list of landmark coordinates.
+        A list of landmark coordinates in the format ``[px1, py1, ..., pxn, pyn]``
+
     """
-    
+    # Creating the copy of the image
     frame = copy.deepcopy(image)
 
     if image_class == 0:
@@ -43,6 +44,9 @@ def show_landmarks(image,
     else:
         image_label = 'left_hand'
         box_color = (255, 192, 203)
+
+    if type(landmarks) == list:
+        landmarks = np.asarray(landmarks, dtype=float).reshape(-1,2)
     
     EDGES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]]
     
@@ -682,7 +686,7 @@ def relative_to_cartesian(labels, landmarks):
     ----------
     labels: list
         A list of labels.
-    landmakrs: list
+    landmarks: list
         A list in the polar coordinates w.r.t. the center of bounding box.
         
     Returns
