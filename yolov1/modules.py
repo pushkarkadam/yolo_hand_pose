@@ -25,6 +25,12 @@ def get_activation(activation_type=None, negative_slope=0.1):
     if activation_type == 'LeakyReLU':
         return torch.nn.LeakyReLU(negative_slope)
 
+    if activation_type == 'Sigmoid':
+        return torch.nn.Sigmoid()
+
+    if activation_type == 'Softmax':
+        return torch.nn.Softmax(dim=1)
+
 class Conv(torch.nn.Module):
     def __init__(self, in_channels, out_channels, activation_type=None, **kwargs):
         """Convolution module with ReLU activation function.
