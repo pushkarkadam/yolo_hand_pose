@@ -633,7 +633,9 @@ class HandPoseDataset(Dataset):
         return len(self.image_labels)
     
     def __getitem__(self, idx):
-        image_path = os.path.join(self.image_dir, self.image_labels.iloc[idx, 0])
+        image_name = self.image_labels.iloc[idx, 0]
+
+        image_path = os.path.join(self.image_dir, image_name)
         # Transposing the image to store it in pytorch tensor format [channel, row, col]
         image = cv2.imread(image_path)
         
@@ -704,6 +706,7 @@ class HandPoseDataset(Dataset):
         classes_gt = ground_truth[5+2*K:,...]
             
         data = {'image': normalized_image,
+                'image_name': image_name,
                 'class_label': class_label,
                 'box_dim': torch.FloatTensor(box_dim),
                 'landmarks': torch.FloatTensor(landmarks),
