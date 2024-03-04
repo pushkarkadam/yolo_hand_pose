@@ -826,6 +826,15 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, bat
     
     bboxes_xy, bboxes_wh, landmarks = break_boxes(boxes)
     
+    sigmoid = torch.nn.Sigmoid()
+    softmax = torch.nn.Softmax(dim=1)
+    
+    confidence = [sigmoid(conf) for conf in confidence]
+    bboxes_xy = [sigmoid(bbox_xy) for bbox_xy in bboxes_xy]
+    bboxes_wh = [sigmoid(bbox_wh) for bbox_wh in bboxes_wh]
+    landmarks = [sigmoid(landmark) for landmark in landmarks]
+    classes = softmax(classes)
+    
     data = {"confidence": confidence,
             "bboxes_xy": bboxes_xy,
             "bboxes_wh": bboxes_wh,
