@@ -768,7 +768,7 @@ def break_boxes(boxes):
         
     return bboxes_xy, bboxes_wh, landmarks
 
-def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, batch_size=1):
+def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, batch_size=1, image_name=None):
     """Returns the tensors.
     
     Parameters
@@ -839,7 +839,8 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, bat
             "bboxes_xy": bboxes_xy,
             "bboxes_wh": bboxes_wh,
             "landmarks": landmarks,
-            "classes": classes
+            "classes": classes,
+            "image_name": image_name
            }
     
     return data
