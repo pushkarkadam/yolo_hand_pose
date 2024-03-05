@@ -1109,3 +1109,109 @@ def yolo_filter(predictions, threshold=0.5):
                  }
     
     return detections
+
+def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord=True, num_landmarks=21):
+    """Extracts data for rendering.
+    
+    Parameters
+    ----------
+    boxes: dict
+        A dict with keys ``['grid', 'xy', 'wh', 'landmarks', 'class_confidence', 'image_name']``
+        Obtained from ``yolo_filter()`` function.
+    img_shape: tuple, default ``(224,224)``
+        Target image shape
+    grid_size: int, default ``7``
+        Size of the yolo grid.
+    polar_coord: bool, default ``True``
+        Whether the landmarks are in polar coordinates.
+    num_landmarks: int, default ``21``.
+        The number of landmarks or keypoints.
+    
+    Returns
+    -------
+    dict
+        A dictionary with keys ``['bounding_box', 'landmarks_xy', 'image_class', 'image_name']``
+        
+    """
+    
+    W, H = img_shape
+    S = grid_size
+
+    grid = boxes['grid']
+    xy = boxes['xy']
+    wh = boxes['wh']
+    lmk = boxes['landmarks']
+    class_conf = boxes['class_confidence']
+    image_name = boxes['image_name']
+
+    # Image numbers
+    img_num = len(grid)
+
+    xy_p = []
+    wh_p = []
+    lmk_p = []
+
+    bounding_box = []
+    landmarks_xy = []
+    image_class = []
+
+
+    for i in range(img_num):
+        for grid_, xy_, wh_, lmk_, class_conf_ in zip(grid[i], xy[i], wh[i], lmk[i], class_conf[i]):
+            # Bounding box coordinate extraction
+            # Extracting grid information
+            x_grid, y_grid = grid_
+
+            # Extracting x and y relative to cell
+            x_cell, y_cell = xy_.tolist()
+            w_img, h_img = wh_.tolist()
+
+            # Converting x and y relative to cell to x and y relative to image
+            x_img = (x_cell + x_grid) / S
+            y_img = (y_cell + y_grid) / S
+
+            # Creating a list of the bounding box coordinate [x, y, w, h]
+            det_bbox = [x_img, y_img, w_img, h_img]
+
+            # Appending to the bounding box list
+            bounding_box.append(det_bbox)
+
+            # landmarks
+            lmk_p = lmk_.tolist()
+            lmk_xy = []
+            i = 0
+            while i < int(num_landmarks):
+                if polar_coord:
+                    # TODO: Fix the coordinate conversion
+                    r, alpha = lmk_p[i:i+2]
+
+                    alpha = alpha * (2 * np.pi)
+
+                    px = r * np.cos(alpha)
+                    py = r * np.sin(alpha)
+
+                    px = x_img + px
+                    py = y_img + py
+
+                    lmk_xy.append(px)
+                    lmk_xy.append(py)
+                else:
+                    px, py = lmk_p[i:i+2]
+                    lmk_xy.append(px)
+                    lmk_xy.append(py)
+
+                i += 1
+            lmk_xy = np.asarray(lmk_xy, dtype=float).reshape(-1,2)
+
+            landmarks_xy.append(lmk_xy)
+
+            # Image class
+            class_pred = int(torch.argmax(class_conf_))
+            image_class.append(class_pred)
+
+    data = {'bounding_box': bounding_box,
+            'landmarks_xy': landmarks_xy,
+            'image_class': image_class,
+            'image_name': image_name
+           }
+    return data
