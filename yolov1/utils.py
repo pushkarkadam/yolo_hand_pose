@@ -1040,6 +1040,7 @@ def yolo_filter(predictions, threshold=0.5):
     box_wh = predictions['bboxes_wh']
     box_lmk = predictions['landmarks']
     box_class_probs = predictions['classes']
+    image_name = predictions['image_name']
     
     # Calculating box score
     box_scores = []
@@ -1061,6 +1062,15 @@ def yolo_filter(predictions, threshold=0.5):
     predictor_xy = predictor_box(box_xy, best_box_index)
     predictor_wh = predictor_box(box_wh, best_box_index)
     predictor_lmk = predictor_box(box_lmk, best_box_index)
+    
+    if len(predictor_xy.shape) == 3:
+        predictor_xy = predictor_xy.unsqueeze(0)
+        
+    if len(predictor_wh.shape) == 3:
+        predictor_wh = predictor_wh.unsqueeze(0)
+        
+    if len(predictor_lmk.shape) == 3:
+        predictor_lmk = predictor_lmk.unsqueeze(0)
     
     # Creating a mask using the threshold values for filtering
     mask = best_box_conf.ge(threshold)
@@ -1094,7 +1104,8 @@ def yolo_filter(predictions, threshold=0.5):
                   'xy': detection_xy,
                   'wh': detection_wh,
                   'landmarks': detection_lmk,
-                  'class_confidence': detection_class_conf
+                  'class_confidence': detection_class_conf,
+                  'image_name': image_name
                  }
     
     return detections
