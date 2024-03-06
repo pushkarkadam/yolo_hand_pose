@@ -1043,14 +1043,11 @@ def yolo_filter(predictions, threshold=0.5):
     image_name = predictions['image_name']
     
     # Calculating box score
-    box_scores = []
-    for b in box_confidence:
-        box_scores.append(b * box_class_probs)
-
-    # Computing the probability of the class confidence
-    box_scores = [c.unsqueeze(0) for c in box_scores]
-    class_conf_score = torch.cat(box_scores, dim=0)
-    max_class_conf, index = torch.max(class_conf_score, dim=0)
+    box_confidence = [b.unsqueeze(0) for b in box_confidence]
+    box_confidence = torch.cat(box_confidence, dim=0)
+    
+    box_scores = torch.multiply(box_confidence, box_class_probs)
+    max_class_conf, index = torch.max(box_scores, dim=0)
     
     # Computing the box confidence and the position of best bounding box
     # responsible for prediction
@@ -1098,7 +1095,7 @@ def yolo_filter(predictions, threshold=0.5):
                     detection_xy[s].append(predictor_xy[s,:, i, j])
                     detection_wh[s].append(predictor_wh[s,:, i, j])
                     detection_lmk[s].append(predictor_lmk[s,:,i, j])
-                    detection_class_conf[s].append(max_class_conf[s,:,i, j])
+                    detection_class_conf[s].append(max_class_conf[s:,i, j])
     
     detections = {'grid': detection_grid, 
                   'xy': detection_xy,
