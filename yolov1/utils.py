@@ -1155,9 +1155,12 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
     landmarks_xy = []
     image_class = []
 
-
-    for i in range(img_num):
-        for grid_, xy_, wh_, lmk_, class_conf_ in zip(grid[i], xy[i], wh[i], lmk[i], class_conf[i]):
+    # Iterating through the images
+    for n in range(img_num):
+        bounding_box.append([])
+        landmarks_xy.append([])
+        image_class.append([])
+        for grid_, xy_, wh_, lmk_, class_conf_ in zip(grid[n], xy[n], wh[n], lmk[n], class_conf[n]):
             # Bounding box coordinate extraction
             # Extracting grid information
             x_grid, y_grid = grid_
@@ -1174,15 +1177,14 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
             det_bbox = [x_img, y_img, w_img, h_img]
 
             # Appending to the bounding box list
-            bounding_box.append(det_bbox)
+            bounding_box[n].append(det_bbox)
 
             # landmarks
             lmk_p = lmk_.tolist()
             lmk_xy = []
             i = 0
-            while i < int(num_landmarks):
+            while i < int(num_landmarks*2):
                 if polar_coord:
-                    # TODO: Fix the coordinate conversion
                     r, alpha = lmk_p[i:i+2]
 
                     alpha = alpha * (2 * np.pi)
@@ -1200,14 +1202,14 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
                     lmk_xy.append(px)
                     lmk_xy.append(py)
 
-                i += 1
+                i += 2
             lmk_xy = np.asarray(lmk_xy, dtype=float).reshape(-1,2)
 
-            landmarks_xy.append(lmk_xy)
+            landmarks_xy[n].append(lmk_xy)
 
             # Image class
             class_pred = int(torch.argmax(class_conf_))
-            image_class.append(class_pred)
+            image_class[n].append(class_pred)
 
     data = {'bounding_box': bounding_box,
             'landmarks_xy': landmarks_xy,
