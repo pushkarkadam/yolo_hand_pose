@@ -1162,12 +1162,16 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
     bounding_box = []
     landmarks_xy = []
     image_class = []
+    class_confidence = []
+    confidence_detection = []
 
     # Iterating through the images
     for n in range(img_num):
         bounding_box.append([])
         landmarks_xy.append([])
         image_class.append([])
+        class_confidence.append([])
+        confidence_detection.append([])
         for grid_, xy_, wh_, lmk_, class_conf_ in zip(grid[n], xy[n], wh[n], lmk[n], class_conf[n]):
             # Bounding box coordinate extraction
             # Extracting grid information
@@ -1218,10 +1222,16 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
             # Image class
             class_pred = int(torch.argmax(class_conf_))
             image_class[n].append(class_pred)
+            class_confidence[n].append(class_conf_)
+            
+            conf_det = torch.max(class_conf_)
+            confidence_detection[n].append(conf_det)
 
     data = {'bounding_box': bounding_box,
             'landmarks_xy': landmarks_xy,
             'image_class': image_class,
-            'image_name': image_name
+            'image_name': image_name,
+            'class_confidence': class_confidence,
+            'confidence_detection': confidence_detection
            }
     return data
