@@ -14,6 +14,7 @@ def show_landmarks(image,
                    bounding_box, 
                    landmarks, 
                    image_class,
+                   class_probs=None,
                    font=cv2.FONT_HERSHEY_SIMPLEX,
                    font_thickness=1,
                    box_color=(255, 0, 0),
@@ -39,10 +40,16 @@ def show_landmarks(image,
     frame = copy.deepcopy(image)
 
     if image_class == 0:
-        image_label = 'right_hand'
+        if class_probs:
+            image_label = 'right_hand: ' + str(round(class_probs, 2))
+        else:
+            image_label = 'right_hand'
         box_color = (255, 0, 0)
     else:
-        image_label = 'left_hand'
+        if class_probs:
+            image_label = 'left_hand: ' + str(round(class_probs, 2))
+        else:
+            image_label = 'left_hand'
         box_color = (255, 192, 203)
 
     if type(landmarks) == list:
@@ -88,11 +95,15 @@ def show_landmarks(image,
     text = str(f"{image_label}")
     text_size, _ = cv2.getTextSize(text, font, label_font_scale, font_thickness)
     text_w, text_h = text_size
-    text_end_point = (start_point[0] + text_w, start_point[1] + text_h)
-    frame = cv2.rectangle(frame, start_point, text_end_point , box_color, -1)
+    
+    text_start_point = start_point[0], start_point[1] - text_h 
+    
+    text_end_point = (start_point[0] + text_w, start_point[1])
+
+    frame = cv2.rectangle(frame, text_start_point, text_end_point , box_color, -1)
     frame = cv2.putText(frame,
                         text=text,
-                        org=(start_point[0], start_point[1]+int(text_h)),
+                        org=(text_start_point[0], text_end_point[1]),
                         fontFace=font,
                         fontScale=label_font_scale,
                         color=label_font_color,
@@ -1095,7 +1106,7 @@ def yolo_filter(predictions, threshold=0.5):
                     detection_xy[s].append(predictor_xy[s,:, i, j])
                     detection_wh[s].append(predictor_wh[s,:, i, j])
                     detection_lmk[s].append(predictor_lmk[s,:,i, j])
-                    detection_class_conf[s].append(max_class_conf[s:,i, j])
+                    detection_class_conf[s].append(max_class_conf[s,i, j])
     
     detections = {'grid': detection_grid, 
                   'xy': detection_xy,
