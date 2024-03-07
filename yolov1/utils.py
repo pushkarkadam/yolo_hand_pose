@@ -14,6 +14,7 @@ def show_landmarks(image,
                    bounding_box, 
                    landmarks, 
                    image_class,
+                   class_names = ["Right Hand", "Left Hand"],
                    class_probs=None,
                    font=cv2.FONT_HERSHEY_SIMPLEX,
                    font_thickness=1,
@@ -41,15 +42,15 @@ def show_landmarks(image,
 
     if image_class == 0:
         if class_probs:
-            image_label = 'right_hand: ' + str(round(class_probs, 2))
+            image_label = class_names[0] + ': ' + str(round(class_probs, 2))
         else:
-            image_label = 'right_hand'
+            image_label = class_names[0]
         box_color = (255, 0, 0)
     else:
         if class_probs:
-            image_label = 'left_hand: ' + str(round(class_probs, 2))
+            image_label = class_names[1] + ': ' + str(round(class_probs, 2))
         else:
-            image_label = 'left_hand'
+            image_label = class_names[1]
         box_color = (255, 192, 203)
 
     if type(landmarks) == list:
@@ -1235,3 +1236,64 @@ def extract_rendering_data(boxes, img_shape=(224, 224), grid_size=7, polar_coord
             'confidence_detection': confidence_detection
            }
     return data
+
+def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
+    """Returns data based on the confidence threshold.
+    
+    Parameters
+    ----------
+    filtered_boxes: dict
+        A dictionary from ``yolo_filter`` function.
+    conf_threshold: float, default ``0.5``
+        A confidence threshold used to eliminate any boxes with class confidence score below the ``conf_threshold``.
+    
+    Returns
+    -------
+    dict
+        A dictionary similar to the input dictionary with the boxes below confidence threshold removed.
+        
+    """
+    # Empty list for storing confidence value mask
+    conf_mask = []
+    
+    # Creating a dictionary structure
+    data_dict = {'grid': [],
+                 'xy': [],
+                 'wh': [],
+                 'landmarks': [],
+                 'class_confidence': [],
+                 'image_name': []
+                }
+    
+    # Extracting class confidence score from the filtered_boxes dictionary
+    class_confidence = filtered_boxes['class_confidence']
+    
+    # Creating a mask be going through class_confidence scores
+    for idx, img_conf in enumerate(class_confidence):
+        conf_mask.append([])
+        for conf in img_conf:
+            conf_mask[idx].append(conf.ge(conf_threshold).tolist())
+
+    # Iterating over the number of images
+    for i, img_conf in enumerate(conf_mask):
+        # Creating a list for each image data to be separate
+        data_dict['grid'].append([])
+        data_dict['xy'].append([])
+        data_dict['wh'].append([])
+        data_dict['landmarks'].append([])
+        data_dict['class_confidence'].append([])
+        
+        # Iterating over the mask value for image
+        for j, mask_val in enumerate(img_conf):
+            # Iterating over the mask value for prediction
+            for k, val in enumerate(mask_val):
+                # Checking if the boolean value for the mask is true. This is above the conf_threshold
+                if val:
+                    data_dict['grid'][i].append(filtered_boxes['grid'][i][j])
+                    data_dict['xy'][i].append(filtered_boxes['xy'][i][j])
+                    data_dict['wh'][i].append(filtered_boxes['wh'][i][j])
+                    data_dict['landmarks'][i].append(filtered_boxes['landmarks'][i][j])
+                    data_dict['class_confidence'][i].append(filtered_boxes['class_confidence'][i][j])
+                    data_dict['image_name'].append(filtered_boxes['image_name'][i])
+
+    return data_dict
