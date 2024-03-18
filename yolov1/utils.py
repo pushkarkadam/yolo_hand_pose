@@ -1107,7 +1107,7 @@ def yolo_filter(predictions, threshold=0.5):
                     detection_xy[s].append(predictor_xy[s,:, i, j])
                     detection_wh[s].append(predictor_wh[s,:, i, j])
                     detection_lmk[s].append(predictor_lmk[s,:,i, j])
-                    detection_class_conf[s].append(max_class_conf[s,i, j])
+                    detection_class_conf[s].append(box_scores[s,:,i, j])
     
     detections = {'grid': detection_grid, 
                   'xy': detection_xy,
