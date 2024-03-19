@@ -1297,3 +1297,19 @@ def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
                     data_dict['image_name'].append(filtered_boxes['image_name'][i])
 
     return data_dict
+
+def separate_labels(labels):
+    """Separates the labels"""
+
+    m, _ = labels.shape
+    cl = []
+    xy = []
+    wh = []
+    lmk = []
+    for i in range(m):
+        cl.append(labels[i][0])
+        xy.append(labels[i][1:3])
+        wh.append(labels[i][3:5])
+        lmk.append(labels[i][5:])
+        
+    return cl, xy, wh, lmk
