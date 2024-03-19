@@ -906,6 +906,13 @@ def iou(box1, box2):
     -------
     torch.tensor
     
+    Examples
+    --------
+    >>> x1 = [torch.Tensor([0]), torch.Tensor([0]), torch.Tensor([1]), torch.Tensor([1])]
+    >>> x2 = [torch.Tensor([0]), torch.Tensor([0]), torch.Tensor([1]), torch.Tensor([1])]
+    >>> iou(x1, x2)
+    tensor([1.])
+
     """
     x1_min, y1_min, x1_max, y1_max = box1
     x2_min, y2_min, x2_max, y2_max = box2
