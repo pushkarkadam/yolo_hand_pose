@@ -1320,3 +1320,65 @@ def separate_labels(labels):
         lmk.append(labels[i][5:])
         
     return cl, xy, wh, lmk
+
+def precision(prediction, target_data, filter_threshold=0.8, iou_threshold = 0.5):
+    """Calculates predictions"""
+
+    filtered_boxes = yolo_filter(prediction, threshold=filter_threshold)
+
+    final_pred = extract_high_conf_boxes(filtered_boxes)
+
+    # storing the prediction values
+    pred_xy = []
+    pred_wh = []
+    pred_xyxy = []
+
+    for i in range(len(final_pred['xy'])):
+        pred_xy.append([])
+        pred_wh.append([])
+        pred_xyxy.append([])
+        for j in range(len(final_pred['xy'][i])):
+            p_xy = final_pred['xy'][i][j].unsqueeze(0)
+            p_wh = final_pred['wh'][i][j].unsqueeze(0)
+            p_xyxy = yolo_boxes_to_corners(p_xy, p_wh)
+
+            pred_xy[i].append(p_xy)
+            pred_wh[i].append(p_wh)
+            pred_xyxy[i].append(p_xyxy)
+
+    # ------------
+    # GROUND TRUTH
+    # ------------
+    target = copy.deepcopy(target_data)
+
+    gt_cl, gt_xy, gt_wh, gt_lmk = separate_labels(target_data['labels'])
+
+    gt_xyxy = [yolo_boxes_to_corners(xy_.unsqueeze(0),wh_.unsqueeze(0)) for xy_, wh_ in zip(gt_xy, gt_wh)]
+    
+    # -----------------
+    # IOU and precision
+    # -----------------
+    
+    ious = []
+    true_positives = 0
+    false_positives = 0
+    
+    for i in range(len(pred_xyxy)):
+        ious.append([])
+        for j in range(len(pred_xyxy[i])):
+            det_iou = iou(pred_xyxy[i][j], gt_xyxy[i])
+            ious[i].append(det_iou)
+            
+            if det_iou > iou_threshold:
+                true_positives += 1
+            else:
+                false_positives += 1
+
+    
+    precision = true_positives / (true_positives + false_positives)
+    
+    return {"precision":precision, 
+            "ious": ious,
+            "gt_xyxy": gt_xyxy,
+            "pred_xyxy": pred_xyxy
+           }
