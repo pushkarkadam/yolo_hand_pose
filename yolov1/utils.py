@@ -1258,6 +1258,13 @@ def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
     -------
     dict
         A dictionary similar to the input dictionary with the boxes below confidence threshold removed.
+        Dictionary attributes:
+        - ``grid``: The grid responsible for predicting the object. A list of tuples.
+        - ``xy``: Coordinates of bounding box center. A list of tuples. 
+        - ``wh``: Width and height of the bounding box. A list of tuples.
+        - ``landmarks``: X and Y coordinates of the landmarks. A list of tuples.
+        - ``image_name``: Name of the image for its prediction. A list.
+        - ``class_label``: The label of class. A list.
         
     """
     # Empty list for storing confidence value mask
@@ -1269,7 +1276,8 @@ def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
                  'wh': [],
                  'landmarks': [],
                  'class_confidence': [],
-                 'image_name': []
+                 'image_name': [],
+                 'class_label': []
                 }
     
     # Extracting class confidence score from the filtered_boxes dictionary
@@ -1289,6 +1297,7 @@ def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
         data_dict['wh'].append([])
         data_dict['landmarks'].append([])
         data_dict['class_confidence'].append([])
+        data_dict['class_label'].append([])
         
         # Iterating over the mask value for image
         for j, mask_val in enumerate(img_conf):
@@ -1300,8 +1309,15 @@ def extract_high_conf_boxes(filtered_boxes, conf_threshold=0.5):
                     data_dict['xy'][i].append(filtered_boxes['xy'][i][j])
                     data_dict['wh'][i].append(filtered_boxes['wh'][i][j])
                     data_dict['landmarks'][i].append(filtered_boxes['landmarks'][i][j])
-                    data_dict['class_confidence'][i].append(filtered_boxes['class_confidence'][i][j])
                     data_dict['image_name'].append(filtered_boxes['image_name'][i])
+                    
+                    # Computing class label
+                    class_conf_scores = filtered_boxes['class_confidence'][i][j]
+                    class_label = int(torch.argmax(class_conf_scores))
+                    
+                    # Appending the values back to the dictionary
+                    data_dict['class_confidence'][i].append(class_conf_scores)
+                    data_dict['class_label'][i].append(class_label)
 
     return data_dict
 
@@ -1321,7 +1337,7 @@ def separate_labels(labels):
         
     return cl, xy, wh, lmk
 
-def precision(prediction, target_data, filter_threshold=0.8, iou_threshold = 0.5):
+def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_threshold = 0.5):
     """Calculates predictions"""
 
     filtered_boxes = yolo_filter(prediction, threshold=filter_threshold)
@@ -1374,8 +1390,10 @@ def precision(prediction, target_data, filter_threshold=0.8, iou_threshold = 0.5
             else:
                 false_positives += 1
 
-    
-    precision = true_positives / (true_positives + false_positives)
+    if (true_positives + false_positives) > 0:
+        precision = true_positives / (true_positives + false_positives)
+    else:
+        precision = 0
     
     return {"precision":precision, 
             "ious": ious,
