@@ -1392,27 +1392,30 @@ def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_thr
     pred_xy = []
     pred_wh = []
     pred_xyxy = []
+    pred_cls = []
 
     for i in range(len(final_pred['xy'])):
         pred_xy.append([])
         pred_wh.append([])
         pred_xyxy.append([])
+        pred_cls.append([])
         for j in range(len(final_pred['xy'][i])):
             p_xy = final_pred['xy'][i][j].unsqueeze(0)
             p_wh = final_pred['wh'][i][j].unsqueeze(0)
+            p_cl = final_pred['class_label'][i][j]
             p_xyxy = yolo_boxes_to_corners(p_xy, p_wh)
 
             pred_xy[i].append(p_xy)
             pred_wh[i].append(p_wh)
             pred_xyxy[i].append(p_xyxy)
-
+            pred_cls[i].append(p_cl)
     # ------------
     # GROUND TRUTH
     # ------------
     target = copy.deepcopy(target_data)
 
     gt_cl, gt_xy, gt_wh, gt_lmk = separate_labels(target_data['labels'])
-
+    
     gt_xyxy = [yolo_boxes_to_corners(xy_.unsqueeze(0),wh_.unsqueeze(0)) for xy_, wh_ in zip(gt_xy, gt_wh)]
     
     # -----------------
@@ -1428,8 +1431,10 @@ def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_thr
         for j in range(len(pred_xyxy[i])):
             det_iou = iou(pred_xyxy[i][j], gt_xyxy[i])
             ious[i].append(det_iou)
+            pred_class_label = pred_cls[i][j]
+            gt_class_label = gt_cl[i]
             
-            if det_iou > iou_threshold:
+            if det_iou > iou_threshold and int(pred_class_label) == int(gt_class_label):
                 true_positives += 1
             else:
                 false_positives += 1
@@ -1442,5 +1447,6 @@ def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_thr
     return {"precision":precision, 
             "ious": ious,
             "gt_xyxy": gt_xyxy,
-            "pred_xyxy": pred_xyxy
+            "pred_xyxy": pred_xyxy,
+            "pred_cls": pred_cls
            }
