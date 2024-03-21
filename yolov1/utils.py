@@ -1381,7 +1381,7 @@ def separate_labels(labels):
         
     return cl, xy, wh, lmk
 
-def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_threshold = 0.5):
+def evaluation_metric(prediction, target_data, filter_threshold=0.5, iou_threshold = 0.5, num_classes=2):
     """Calculates predictions"""
 
     filtered_boxes = yolo_filter(prediction, threshold=filter_threshold)
@@ -1423,30 +1423,80 @@ def precision_calculation(prediction, target_data, filter_threshold=0.8, iou_thr
     # -----------------
     
     ious = []
-    true_positives = 0
-    false_positives = 0
+    
+    evaluations = []
+    eval_dict = {
+        "TP": 0,
+        "FP": 0,
+        "FN": 0,
+        "TN": 0,
+    }
+    
+    for n in range(num_classes):
+        evaluations.append(copy.deepcopy(eval_dict))
     
     for i in range(len(pred_xyxy)):
         ious.append([])
         for j in range(len(pred_xyxy[i])):
             det_iou = iou(pred_xyxy[i][j], gt_xyxy[i])
             ious[i].append(det_iou)
-            pred_class_label = pred_cls[i][j]
-            gt_class_label = gt_cl[i]
+            pred_class_label = int(pred_cls[i][j])
+            gt_class_label = int(gt_cl[i])
             
-            if det_iou > iou_threshold and int(pred_class_label) == int(gt_class_label):
-                true_positives += 1
+            # Checking if the prediction class is empty i.e. no detection.
+            # Update false negative for both the class
+            if not pred_cls[i]:
+                for n in range(num_classes):
+                    evaluations[n]['FN'] += 1
+                continue
+                
+            # Checking if the object is detected with IOU threshold   
+            if det_iou > iou_threshold:
+                # Checking if the class prediction matching ground truth class
+                if pred_class_label == gt_class_label:
+                    # Checking if the ground truth is right hand
+                    # Increment the TP counter for right hand
+                    evaluations[pred_class_label]['TP'] += 1
+                else:
+                    evaluations[pred_class_label]['FP'] += 1
             else:
-                false_positives += 1
-
-    if (true_positives + false_positives) > 0:
-        precision = true_positives / (true_positives + false_positives)
-    else:
-        precision = 0
+                evaluations[pred_class_label]['FP'] += 1
+                    
     
-    return {"precision":precision, 
+    class_accuracy = []
+    class_precision = []
+    class_recall = []
+    
+    for n in range(num_classes):
+        # Assigning the dictionary of the class in evaluations list
+        e = evaluations[n]
+        
+        # Accuracy calculation
+        try:
+            acc = e['TP'] / (e['TP'] + e['TN'] + e['FP'] + e['FN'])
+        except:
+            acc = 0
+        class_accuracy.append(acc)
+        
+        # precision calcuation
+        try:
+            prec = e['TP'] / (e['TP'] + e['FP'])
+        except:
+            prec = 0
+        class_precision.append(prec)
+        
+        try:
+            recall = e['TP'] / (e['TP'] + e['FN'])
+        except:
+            recall = 0
+        class_recall.append(recall)
+
+    return {"class_precision":class_precision,
+            "class_accuracy": class_accuracy,
+            "class_recall": class_recall,
             "ious": ious,
             "gt_xyxy": gt_xyxy,
             "pred_xyxy": pred_xyxy,
-            "pred_cls": pred_cls
+            "pred_cls": pred_cls,
+            "evaluations": evaluations
            }
