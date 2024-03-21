@@ -1432,6 +1432,8 @@ def evaluation_metric(prediction, target_data, filter_threshold=0.5, iou_thresho
         "TN": 0,
     }
     
+    confusion_matrix = torch.zeros((num_classes+1, num_classes+1))
+    
     for n in range(num_classes):
         evaluations.append(copy.deepcopy(eval_dict))
     
@@ -1453,6 +1455,7 @@ def evaluation_metric(prediction, target_data, filter_threshold=0.5, iou_thresho
             # Checking if the object is detected with IOU threshold   
             if det_iou > iou_threshold:
                 # Checking if the class prediction matching ground truth class
+                confusion_matrix[pred_class_label][gt_class_label] += 1
                 if pred_class_label == gt_class_label:
                     # Checking if the ground truth is right hand
                     # Increment the TP counter for right hand
@@ -1498,5 +1501,6 @@ def evaluation_metric(prediction, target_data, filter_threshold=0.5, iou_thresho
             "gt_xyxy": gt_xyxy,
             "pred_xyxy": pred_xyxy,
             "pred_cls": pred_cls,
-            "evaluations": evaluations
+            "evaluations": evaluations,
+            "confusion_matrix": confusion_matrix
            }
