@@ -825,7 +825,7 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, bat
     # Iterating over the boxes
     for box in range(num_boxes):
         temp_confidence = output[:,start,...]
-        confidence.append(temp_confidence)
+        confidence.append(temp_confidence.unsqueeze(1))
         start += 1
         # 4 (x,y,w,h) + 2 * 21 (px, py) or (r, alpha)
         end = start + 4 + 2 * num_landmarks 
