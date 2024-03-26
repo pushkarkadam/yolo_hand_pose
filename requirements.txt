@@ -8,3 +8,5 @@ scikit-image
 sphinx
 pytest 
 tqdm
+torchsummary
+pycocotools
