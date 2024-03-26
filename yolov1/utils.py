@@ -809,7 +809,7 @@ def yolo_head(predictions, num_boxes, num_landmarks, num_classes, grid_size, bat
     S = grid_size
     
     channels = num_boxes * (5 + 2 * num_landmarks) + num_classes
-    
+
     output = predictions.reshape(batch_size,channels, S, S)
     
     # storing confidence score
@@ -1111,7 +1111,7 @@ def yolo_filter(predictions, threshold=0.5):
         detection_lmk.append([])
         detection_class_conf.append([])
         detection_class_label.append([])
-        
+
         for i in range(r):
             for j in range(c):
                 if mask[s, i, j]:
