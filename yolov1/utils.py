@@ -1062,17 +1062,19 @@ def yolo_filter(predictions, threshold=0.5):
     image_name = predictions['image_name']
     
     # Calculating box score
-    box_confidence = [b.unsqueeze(0) for b in box_confidence]
+    m, _, S, _ = box_confidence[0].shape
+    l = len(box_confidence)
+
     box_confidence = torch.cat(box_confidence, dim=0)
+    box_confidence = box_confidence.reshape((m, l, S, S))
+    
     
     box_scores = torch.multiply(box_confidence, box_class_probs)
-    max_class_conf, index = torch.max(box_scores, dim=0)
+    max_class_conf, index = torch.max(box_scores, dim=1)
     
     # Computing the box confidence and the position of best bounding box
     # responsible for prediction
-    box_confidence = [b.unsqueeze(0) for b in box_confidence]
-    box_conf = torch.cat(box_confidence, dim=0)
-    best_box_conf, best_box_index = torch.max(box_conf, dim=0)
+    best_box_conf, best_box_index = torch.max(box_confidence, dim=1)
     
     # Using the best bounding box in the data
     predictor_xy = predictor_box(box_xy, best_box_index)
@@ -1100,6 +1102,7 @@ def yolo_filter(predictions, threshold=0.5):
     detection_wh = []
     detection_lmk = []
     detection_class_conf = []
+    detection_class_label = []
 
     for s in range(m):
         detection_grid.append([])
@@ -1107,21 +1110,25 @@ def yolo_filter(predictions, threshold=0.5):
         detection_wh.append([])
         detection_lmk.append([])
         detection_class_conf.append([])
+        detection_class_label.append([])
+        
         for i in range(r):
             for j in range(c):
-                if mask[s, i,j]:
+                if mask[s, i, j]:
                     detection_grid[s].append((i,j))
                     detection_xy[s].append(predictor_xy[s,:, i, j])
                     detection_wh[s].append(predictor_wh[s,:, i, j])
                     detection_lmk[s].append(predictor_lmk[s,:,i, j])
                     detection_class_conf[s].append(box_scores[s,:,i, j])
+                    detection_class_label[s].append(int(torch.argmax(box_scores[s,:,i, j])))
     
     detections = {'grid': detection_grid, 
                   'xy': detection_xy,
                   'wh': detection_wh,
                   'landmarks': detection_lmk,
                   'class_confidence': detection_class_conf,
-                  'image_name': image_name
+                  'image_name': image_name,
+                  'class_label': detection_class_label
                  }
     
     return detections
