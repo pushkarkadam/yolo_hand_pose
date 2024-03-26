@@ -5,24 +5,23 @@ from .utils import *
 
 class YoloLoss(nn.Module):
     """YOLO loss"""
-    def __init__(self, S=7, B=2, C=2, K=21, batch_size=1, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5, epsilon=1e-6):
+    def __init__(self, S=7, B=2, C=2, K=21, lambda_noobj=0.5, lambda_coord=5, lambda_lmk=5, epsilon=1e-6):
         super(YoloLoss, self).__init__()
         self.mse = nn.MSELoss(reduction="sum")
         self.S = S
         self.B = B
         self.C = C
         self.K = K
-        self.batch_size=batch_size
         self.lambda_noobj = lambda_noobj
         self.lambda_coord = lambda_coord
         self.lambda_lmk = lambda_lmk
         self.epsilon = epsilon
         
-    def forward(self, predictions, target):
+    def forward(self, predictions, target, batch_size=1):
         if type(predictions) == dict:
             pred = predictions
         else:
-            pred = yolo_head(predictions, num_boxes=self.B, num_landmarks=self.K, num_classes=self.C, grid_size=self.S, batch_size=self.batch_size)
+            pred = yolo_head(predictions, num_boxes=self.B, num_landmarks=self.K, num_classes=self.C, grid_size=self.S, batch_size=batch_size)
         
         # Extracting Prediction
         pred_boxes_xy = pred['bboxes_xy']
@@ -61,7 +60,7 @@ class YoloLoss(nn.Module):
         iou_maxes, best_box_index = torch.max(boxes_iou, dim=0)
         
         # Indicator function that is used to test if the object exists
-        exists_box = target['confidence_gt'].unsqueeze(0)
+        exists_box = target['confidence_gt'].unsqueeze(1)
 
         # Coordinate losses
         # -------
@@ -74,6 +73,7 @@ class YoloLoss(nn.Module):
         # -------
         # wh loss
         # -------
+        
         predictor_wh = predictor_box(pred_boxes_wh, best_box_index)
         predictor_wh = exists_box * predictor_wh
         wh_loss = self.lambda_coord * self.mse(torch.flatten(torch.sqrt(torch.abs(predictor_wh) + self.epsilon)), torch.flatten(torch.sqrt(torch.abs(target_box_wh) + self.epsilon)))
@@ -104,7 +104,7 @@ class YoloLoss(nn.Module):
         # -------------
 
         predictor_lmk = predictor_box(pred_boxes_lmk, best_box_index.squeeze(0))
-        exists_lmk_box = exists_box.reshape(self.batch_size, 1, self.S, self.S)
+        exists_lmk_box = exists_box.reshape(batch_size, 1, self.S, self.S)
         pred_lmk = exists_lmk_box * predictor_lmk
         
         # relative to center coordinates
