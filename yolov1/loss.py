@@ -60,6 +60,7 @@ class YoloLoss(nn.Module):
         iou_maxes, best_box_index = torch.max(boxes_iou, dim=0)
         
         # Indicator function that is used to test if the object exists
+        # import pdb;pdb.set_trace()
         exists_box = target['confidence_gt'].unsqueeze(1)
 
         # Coordinate losses
@@ -115,5 +116,14 @@ class YoloLoss(nn.Module):
 
         # Computing total loss
         loss = xy_loss + wh_loss + obj_loss + noobj_loss + class_loss + landmark_loss
+
+        losses = {"xy_loss": xy_loss,
+                  "wh_loss": wh_loss,
+                  "obj_loss": obj_loss,
+                  "noobj_loss": noobj_loss,
+                  "class_loss": class_loss,
+                  "landmark_loss": landmark_loss,
+                  "total_loss": loss
+                 }
         
-        return loss
+        return losses
