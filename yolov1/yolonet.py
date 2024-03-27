@@ -1,4 +1,5 @@
 import torch
+from torchsummary import summary
 from .modules import * 
 from .utils import * 
 
@@ -226,3 +227,76 @@ class Yolo(torch.nn.Module):
                                                            out_features=out_features
                                                           ))
                     self.model_structure.append([None, in_features, out_features])
+
+class YOLOtransfer(torch.nn.Module):
+    def __init__(self, model, grid=7, boxes=2, num_lmk=21, num_classes=2, input_size=(3,448,448)):
+        """YOLO transfer model
+        Creates a model using transfer learning.
+
+        Arguments
+        ---------
+        model: torchvision.models
+            A model from a list of models from pytorch.
+        grid: int, default ``7``
+            The grid size.
+        boxes: int, default ``2``
+            The number of prediction boxes.
+        num_lmk: int, default ``21``
+            The number of landmarks.
+        num_classes: int, default ``2``
+            Number of classes to predict
+        input_size: tuple, default ``(3, 448, 488)``
+            The input size of the image.
+
+        Methods
+        -------
+        summary()
+            Summarizes the network using ``torchsummary.summary``.
+        load_saved(network_path)
+            Loads a sived network.
+        
+        """
+        super(YOLOtransfer, self).__init__()
+        
+        self.model = model
+        self.grid = grid
+        self.boxes = boxes
+        self.num_lmk = num_lmk
+        self.num_classes = num_classes
+        self.input_size = input_size
+
+        num_ftrs = model.fc.in_features
+        out_ftrs = grid * grid * (boxes * (5 + num_lmk * 2) + num_classes)
+
+        self.model.fc = torch.nn.Linear(num_ftrs, out_ftrs)
+    
+    def forward(self, x):
+        return self.model(x)
+    
+    def summary(self):
+        return summary(self.model, input_size=self.input_size)
+
+    def load_saved(self, network_path):
+        """Loads the saved network.
+
+        Parameters
+        ----------
+        network_path: str
+            Network path and name. e.g. ``'~/path/to/data/network.pt'``
+        
+        """
+        try:
+            self.model.load_state_dict(torch.load(network_path))
+        except:
+            print("Network path does not exist!")
+        
+    def save(self, network_path):
+        """Saves the network.
+
+        Parameters
+        ----------
+        network_path: str
+            Network path and name. e.g. ``'~/path/to/data/network.pt'``
+        
+        """
+        torch.save(self.model.state_dict(), network_path)
